@@ -20,7 +20,7 @@
   <parent>
     <groupId>org.fusesource.fabric.fab</groupId>
     <artifactId>fab-project</artifactId>
-    <version>7.2.0.fuse-SNAPSHOT</version>
+    <version>7.2.0.redhat-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 

@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.fusesource.fabric</groupId>
         <artifactId>openshift</artifactId>
-        <version>7.2.0.fuse-SNAPSHOT</version>
+        <version>7.2.0.redhat-SNAPSHOT</version>
     </parent>
 
     <artifactId>cartridge</artifactId>
