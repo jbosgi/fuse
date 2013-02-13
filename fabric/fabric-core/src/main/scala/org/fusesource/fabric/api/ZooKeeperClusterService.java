@@ -16,18 +16,11 @@
  */
 package org.fusesource.fabric.api;
 
-import java.util.List;
-import java.util.Map;
-
 import org.fusesource.fabric.zookeeper.IZKClient;
 
-public interface ZooKeeperClusterService {
+import java.util.List;
 
-    static final String AGENT_AUTOSTART ="agent.auto.start";
-    static final String ENSEMBLE_AUTOSTART ="ensemble.auto.start";
-    static final String PROFILES_AUTOIMPORT_PATH ="profiles.auto.import.path";
-    static final String ZOOKEEPER_PASSWORD ="zookeeper.password";
-    static final String PROFILE ="profile";
+public interface ZooKeeperClusterService {
 
     List<String> getEnsembleContainers();
 

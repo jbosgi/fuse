@@ -140,7 +140,7 @@ define [
           app.flash
             kind: "error"
             title: "Server Error : "
-            message: "Fuse container creation failed due to #{response.statusText} : \u201c#{response.responseText}\u201d"
+            message: "Container creation failed due to #{response.statusText} : \u201c#{response.responseText}\u201d"
 
       @model.create arguments, options
       @container.do_return()
@@ -332,7 +332,7 @@ define [
           app.flash
             kind: "error"
             title: "Server Error : "
-            message: "Fuse container creation failed due to #{textStatus.statusText} : \u201c#{textStatus.responseText}\u201d"
+            message: "Container creation failed due to #{textStatus.statusText} : \u201c#{textStatus.responseText}\u201d"
 
       @model.create arguments, options
       @container.do_return()
@@ -651,7 +651,7 @@ define [
           app.flash
             kind: "error"
             title: "Server Error : "
-            message: "Fuse container creation failed due to : \u201c#{textStatus.responseText}\u201d"
+            message: "Container creation failed due to : \u201c#{textStatus.responseText}\u201d"
 
       @model.create arguments, options
       @container.do_return()
@@ -775,7 +775,7 @@ define [
 
       for profile in all_profiles
         profile = profile.trim()
-        li = _.template("<li><label><input type=\"checkbox\" name=\"#{profile}\" value=\"#{profile}\"></input><span>#{profile}</span></label></li>")
+        li = _.template("<li><div class=\"clearfix\" style=\"margin: 0px;\"><label><input type=\"checkbox\" name=\"#{profile}\" value=\"#{profile}\"></input><span>#{profile}</span></label></div></li>")
 
         if profile_names
           for p in profile_names
@@ -931,7 +931,7 @@ define [
   class AddAgentWizard extends FON.TemplateController
     template: jade["common/wizard.jade"]
     template_data: ->
-      header: "Create Fuse Container"
+      header: "Create Container"
     elements:
       ".body": "body"
       "a.next": "next"

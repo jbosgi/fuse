@@ -135,7 +135,7 @@ public class PatchServiceImpl implements PatchService {
             "org.apache.servicemix.nmr:nmr-parent|" +
                     "org.apache.servicemix.nmr:apache-servicemix-nmr," +
             "org.fusesource:fuse-project|" +
-                    "org.fusesource.esb:fuse-esb|" +
+                    "org.jboss.fuse:jboss-fuse|" +
                     "org.fusesource.examples:fabric-activemq-demo|" +
                     "org.fusesource.examples:fabric-camel-cluster|" +
                     "org.fusesource.examples:fabric-camel-demo|" +
@@ -527,8 +527,9 @@ public class PatchServiceImpl implements PatchService {
         }
         if (!otherArtifacts.isEmpty()) {
             Map<String, Set<String>> upgrades = doGetPossibleUpgrades(otherArtifacts);
-            for (String artifact : upgrades.keySet()) {
-                for (String version : upgrades.get(artifact)) {
+            for (Map.Entry<String, Set<String>> entry : upgrades.entrySet()) {
+                String artifact = entry.getKey();
+                for (String version : entry.getValue()) {
                     Patch patch = new PatchImpl(artifact + ":" + version, "|" + artifact.replace(':', '|') + "|" + version,
                                                 Collections.singleton(artifact), Collections.<Issue>emptyList());
                     possiblePatches.add(patch);

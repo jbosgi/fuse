@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.Configuration;
 import org.ops4j.pax.exam.options.DefaultCompositeOption;
+import static org.openengsb.labs.paxexam.karaf.options.KarafDistributionOption.*;
 
 /**
  * Tests various Fabric Features.
@@ -49,12 +50,12 @@ public abstract class FabricFeaturesTest extends FabricTestSupport {
      * Adds a feature to the profile and tests it on the container.
      * <p>Note:</p> Before and after the test the container moves to default profile.
      *
-     * @param featureName
+     * @param featureNames
      * @param profileName
-     * @param expectedSymbolicName
+     * @param expectedSymbolicNames
      */
-    public void assertProvisionedFeature(String containerName, String featureName, String profileName, String expectedSymbolicName) throws Exception {
-        System.out.println("Testing profile:"+profileName+" on container:"+containerName+" by adding feature:"+featureName);
+    public void assertProvisionedFeature(String containerName, String featureNames, String profileName, String expectedSymbolicNames) throws Exception {
+        System.out.println("Testing profile:"+profileName+" on container:"+containerName+" by adding feature:"+featureNames);
         FabricService fabricService = getOsgiService(FabricService.class);
         //We set container to default to clean the container up.
         containerSetProfile(containerName, "default");
@@ -64,15 +65,19 @@ public abstract class FabricFeaturesTest extends FabricTestSupport {
         List<String> originalFeatures = targetProfile.getFeatures();
         List<String> testFeatures = new ArrayList(originalFeatures.size());
         Collections.copy(originalFeatures,testFeatures);
-        testFeatures.add(featureName);
+        for (String featureName : featureNames.split(" ")) {
+            testFeatures.add(featureNames);
+        }
 
         targetProfile.setFeatures(testFeatures);
         //Test the modified profile.
         containerSetProfile(containerName, profileName);
-        String bundles = executeCommand("container-connect " + containerName + " osgi:list -s -t 0 | grep " + expectedSymbolicName);
-        Assert.assertNotNull(bundles);
-        Assert.assertTrue(bundles.contains(expectedSymbolicName));
-        System.out.println(bundles);
+        for (String symbolicName : expectedSymbolicNames.split(" ")) {
+            String bundles = executeCommand("container-connect -u admin -p admin " + containerName + " osgi:list -s -t 0 | grep " + symbolicName);
+            Assert.assertNotNull(bundles);
+            Assert.assertTrue(bundles.contains(symbolicName));
+            System.out.println(bundles);
+        }
         //We set the container to default to clean up the profile.
         containerSetProfile(containerName, "default");
         targetProfile.setFeatures(originalFeatures);
@@ -111,7 +116,7 @@ public abstract class FabricFeaturesTest extends FabricTestSupport {
     public Option[] config() {
         return new Option[]{
                 new DefaultCompositeOption(fabricDistributionConfiguration()),
-                //debugConfiguration("5005",true),
+                debugConfiguration("5005",false),
                 copySystemProperty("feature")
         };
     }

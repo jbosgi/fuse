@@ -20,7 +20,7 @@
   <parent>
     <groupId>org.fusesource.fabric.security</groupId>
     <artifactId>fabric-security-project</artifactId>
-    <version>7.2.0.fuse-SNAPSHOT</version>
+    <version>7.2.0.redhat-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 
@@ -43,7 +43,7 @@
 
     <dependency>
       <groupId>org.apache.activemq</groupId>
-      <artifactId>activemq-all</artifactId>
+      <artifactId>activemq-broker</artifactId>
       <version>${activemq-version}</version>
     </dependency>
 
