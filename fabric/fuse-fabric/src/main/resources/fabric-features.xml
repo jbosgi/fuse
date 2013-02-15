@@ -503,8 +503,11 @@
         <bundle>mvn:org.fusesource.fabric/fabric-jolokia/${fabric.version}</bundle>
     </feature>
 
+    <!-- disabling for Perfectus build - no release available for hawt.io
     <feature name="hawtio" version="${fabric.version}" resolver="(obr)">
         <feature version="${karaf-version}">war</feature>
         <bundle>mvn:io.hawt/hawtio-web/${hawtio-version}/war</bundle>
     </feature>
+    -->
+
 </features>
