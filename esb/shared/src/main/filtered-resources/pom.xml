@@ -21,7 +21,7 @@
 
     <groupId>org.jboss.fuse</groupId>
     <artifactId>project</artifactId>
-    <version>${project.version}</version>
+    <version>${fuse.version}</version>
     <packaging>pom</packaging>
     <description>JBoss Fuse :: Examples</description>
 

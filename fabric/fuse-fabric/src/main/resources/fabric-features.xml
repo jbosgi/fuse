@@ -86,9 +86,9 @@
         <bundle>mvn:org.apache.karaf.deployer/org.apache.karaf.deployer.wrap/${karaf-version}</bundle>
     </feature>
 
-    <feature name="fabric-bundle" version="${project.version}" resolver="(obr)">
-        <bundle>mvn:org.fusesource.fabric/common-util/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.fabric.fab/fab-osgi/${project.version}</bundle>
+    <feature name="fabric-bundle" version="${fabric.version}" resolver="(obr)">
+        <bundle>mvn:org.fusesource.fabric/common-util/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric.fab/fab-osgi/${fabric.version}</bundle>
         <bundle>mvn:org.ops4j.base/ops4j-base-net/${ops4j-base.version}</bundle>
         <bundle>mvn:org.ops4j.base/ops4j-base-lang/${ops4j-base.version}</bundle>
         <bundle>mvn:org.ops4j.base/ops4j-base-monitors/${ops4j-base.version}</bundle>
@@ -97,9 +97,9 @@
         <bundle>mvn:org.ops4j.pax.swissbox/pax-swissbox-property/${ops4j-pax-swissbox-property.version}</bundle>
     </feature>
 
-    <feature name="process-manager" version="${project.version}" resolver="(obr)">
+    <feature name="process-manager" version="${fabric.version}" resolver="(obr)">
         <feature>fabric-bundle</feature>
-        <bundle>mvn:org.fusesource.fabric/process-manager/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/process-manager/${fabric.version}</bundle>
         <bundle>mvn:org.ops4j.base/ops4j-base-net/${ops4j-base.version}</bundle>
         <bundle>mvn:org.ops4j.base/ops4j-base-lang/${ops4j-base.version}</bundle>
         <bundle>mvn:org.ops4j.base/ops4j-base-monitors/${ops4j-base.version}</bundle>
@@ -109,141 +109,141 @@
         <bundle>mvn:com.google.guava/guava/${guava-version}</bundle>
     </feature>
 
-    <feature name="fabric-zookeeper" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-zookeeper" version="${fabric.version}" resolver="(obr)">
         <bundle>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.jasypt/${jasypt-smx-version}</bundle>
         <bundle>mvn:commons-codec/commons-codec/${commons-codec-version}</bundle>
         <bundle>mvn:commons-lang/commons-lang/${commons-lang-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-linkedin-zookeeper/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-zookeeper/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-linkedin-zookeeper/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-zookeeper/${fabric.version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-core-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
     </feature>
 
-    <feature name="fabric-configadmin" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-configadmin" version="${fabric.version}" resolver="(obr)">
         <feature>fabric-zookeeper</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-configadmin/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-configadmin/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-agent" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-agent" version="${fabric.version}" resolver="(obr)">
         <!-- Currently not supported and thus commented out -->
-        <!--feature version="${project.version}">fabric-bundle</feature-->
-        <feature version="${project.version}">fabric-zookeeper</feature>
-        <feature version="${project.version}">fabric-configadmin</feature>
-        <feature version="${project.version}">fabric-jaas</feature>
+        <!--feature version="${fabric.version}">fabric-bundle</feature-->
+        <feature version="${fabric.version}">fabric-zookeeper</feature>
+        <feature version="${fabric.version}">fabric-configadmin</feature>
+        <feature version="${fabric.version}">fabric-jaas</feature>
 <!--
-        <feature version="${project.version}">insight-graph</feature>
+        <feature version="${fabric.version}">insight-graph</feature>
 -->
-        <bundle>mvn:org.fusesource.fabric/fabric-agent/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-agent/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-maven-proxy" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-maven-proxy" version="${fabric.version}" resolver="(obr)">
         <feature version="${karaf-version}">http</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-maven-proxy/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-maven-proxy/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-core" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-zookeeper</feature>
+    <feature name="fabric-core" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-zookeeper</feature>
         <bundle dependency="true">mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala-osgi-version}</bundle>
-        <bundle>mvn:org.fusesource.insight/insight-log/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-core/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.insight/insight-log/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-core/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-boot-commands" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-zookeeper</feature>
+    <feature name="fabric-boot-commands" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-zookeeper</feature>
         <bundle dependency="true">mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.jsch/${jsch-smx-version}</bundle>
         <bundle dependency="true">mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala-osgi-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-core-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
-        <feature version="${project.version}">fabric-core</feature>
+        <feature version="${fabric.version}">fabric-core</feature>
         
         <bundle dependency="true">mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.jsch/${jsch-smx-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-core-agent-ssh/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-boot-commands/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-core-agent-ssh/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-boot-commands/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-commands" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-boot-commands</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-commands/${project.version}</bundle>
+    <feature name="fabric-commands" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-boot-commands</feature>
+        <bundle>mvn:org.fusesource.fabric/fabric-commands/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-zookeeper-commands" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-commands</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-zookeeper-commands/${project.version}</bundle>
+    <feature name="fabric-zookeeper-commands" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-commands</feature>
+        <bundle>mvn:org.fusesource.fabric/fabric-zookeeper-commands/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-dosgi" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-dosgi" version="${fabric.version}" resolver="(obr)">
         <bundle>mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala-osgi-version}</bundle>
         <feature>fabric-zookeeper</feature>
         <bundle dependency="true">mvn:org.fusesource.hawtdispatch/hawtdispatch/${hawtdispatch-version}</bundle>
         <bundle dependency="true">mvn:org.fusesource.hawtbuf/hawtbuf/${hawtbuf-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-dosgi/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-dosgi/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-eca" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-eca" version="${fabric.version}" resolver="(obr)">
         <feature version="[2.7,3.0)">camel</feature>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-core-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.apache.commons/commons-math/${common-math-version}</bundle>
         <bundle dependency="true">mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.antlr-runtime/3.2_1</bundle>
-        <bundle>mvn:org.fusesource.eca/eca-core/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.eca/eca-core/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-camel" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-camel" version="${fabric.version}" resolver="(obr)">
         <feature version="[2.7,3.0)">camel</feature>
         <feature>fabric-groups</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-camel/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-camel/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-cxf" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-cxf" version="${fabric.version}" resolver="(obr)">
         <feature version="[2.4,3.0)">cxf</feature>
         <feature>fabric-groups</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-cxf/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-cxf/${fabric.version}</bundle>
     </feature>
 
     <feature name="mq-fabric" version="${fuse.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-groups</feature>
+        <feature version="${fabric.version}">fabric-groups</feature>
         <feature version="${activemq-version}">activemq-broker</feature>
-        <bundle>mvn:org.fusesource.insight/insight-log/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.insight/insight-log/${fabric.version}</bundle>
         <bundle>mvn:org.jboss.amq/mq-fabric/${fuse.version}</bundle>
     </feature>
 
-    <feature name="mq-web-console" version="${project.version}" resolver="(obr)">
+    <feature name="mq-web-console" version="${fuse.version}" resolver="(obr)">
         <feature version="[2,3)">war</feature>
-        <bundle>mvn:org.jboss.amq/mq-web-console/${project.version}/war</bundle>
+        <bundle>mvn:org.jboss.amq/mq-web-console/${fuse.version}/war</bundle>
     </feature>
 
-    <feature name="fabric-groups" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-zookeeper</feature>
+    <feature name="fabric-groups" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-zookeeper</feature>
         <bundle dependency="true">mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala-osgi-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-groups/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-groups/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-monitor" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-zookeeper</feature>
+    <feature name="fabric-monitor" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-zookeeper</feature>
 
         <bundle>mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala-osgi-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-core-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
-        <feature version="${project.version}">fabric-core</feature>
+        <feature version="${fabric.version}">fabric-core</feature>
 
         <bundle dependency="true">mvn:org.fusesource.hawtdispatch/hawtdispatch/${hawtdispatch-version}</bundle>
         <bundle dependency="true">mvn:org.fusesource.rrd4j/rrd4j/${rrd4j-version}</bundle>
         <bundle dependency="true">mvn:org.fusesource.scalate/scalate-util/${scalate-version}</bundle>
         <!-- <bundle dependency="true">mvn:org.fusesource/sigar/${sigar-version}</bundle> -->
             
-        <bundle>mvn:org.fusesource.fabric/fabric-monitor/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-monitor/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-jaas" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-core</feature>
-        <feature version="${project.version}">fabric-zookeeper</feature>
+    <feature name="fabric-jaas" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-core</feature>
+        <feature version="${fabric.version}">fabric-zookeeper</feature>
         <bundle dependency='true'>mvn:commons-codec/commons-codec/${commons-codec-version}</bundle>
         <bundle dependency='true'>mvn:commons-lang/commons-lang/${commons-lang-version}</bundle>
         <bundle dependency='true'>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.jasypt/${jasypt-smx-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-jaas/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-jaas/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-jclouds" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-jclouds" version="${fabric.version}" resolver="(obr)">
         <bundle dependency='true'>mvn:org.apache.servicemix.specs/org.apache.servicemix.specs.activation-api-1.1/${servicemix-specs-version}</bundle>
         <feature version='${jclouds-karaf-version}'>jclouds</feature>
         <feature version='${jclouds-karaf-version}'>jclouds-driver-sshj</feature>
@@ -252,17 +252,17 @@
         <feature version='${jclouds-karaf-version}'>jclouds-commands</feature>
         <bundle dependency='true'>mvn:org.jclouds.api/ec2/${jclouds-version}</bundle>
         <bundle dependency='true'>mvn:org.jclouds.common/aws-common/${jclouds-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-core-agent-jclouds/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-core-agent-jclouds/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-zeroconf" version="${project.version}" resolver="(obr)">
-        <feature version="${project.version}">fabric-core</feature>
-        <feature version="${project.version}">fabric-configadmin</feature>
+    <feature name="fabric-zeroconf" version="${fabric.version}" resolver="(obr)">
+        <feature version="${fabric.version}">fabric-core</feature>
+        <feature version="${fabric.version}">fabric-configadmin</feature>
 
-        <bundle>mvn:org.fusesource.fabric/fabric-zeroconf/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-zeroconf/${fabric.version}</bundle>
     </feature>
 
-    <feature name='fabric-bridge' version='${project.version}' resolver="(obr)">
+    <feature name='fabric-bridge' version='${fabric.version}' resolver="(obr)">
         <bundle>mvn:org.springframework/spring-core/${spring-version}</bundle>
         <bundle>mvn:org.springframework/spring-beans/${spring-version}</bundle>
         <bundle>mvn:org.springframework/spring-context/${spring-version}</bundle>
@@ -272,17 +272,17 @@
         <bundle>mvn:org.apache.commons/commons-lang3/3.0.1</bundle>
         <bundle>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.commons-pool/${commons-pool-version}</bundle>
         <feature version="${activemq-version}">activemq-broker</feature>
-        <bundle>mvn:org.fusesource.fabric.bridge/fabric-bridge/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric.bridge/fabric-bridge/${fabric.version}</bundle>
     </feature>
 
-    <feature name='fabric-bridge-zookeeper' version='${project.version}'>
-        <feature version="${project.version}">fabric-core</feature>
-        <feature version="${project.version}">fabric-configadmin</feature>
-        <feature version='${project.version}'>fabric-bridge</feature>
-        <bundle>mvn:org.fusesource.fabric.bridge/fabric-bridge-zookeeper/${project.version}</bundle>
+    <feature name='fabric-bridge-zookeeper' version='${fabric.version}'>
+        <feature version="${fabric.version}">fabric-core</feature>
+        <feature version="${fabric.version}">fabric-configadmin</feature>
+        <feature version='${fabric.version}'>fabric-bridge</feature>
+        <bundle>mvn:org.fusesource.fabric.bridge/fabric-bridge-zookeeper/${fabric.version}</bundle>
     </feature>
 
-    <feature name="insight-graph" version="${project.version}" resolver="(obr)">
+    <feature name="insight-graph" version="${fabric.version}" resolver="(obr)">
         <config name="org.fusesource.insight.graph">
             #
             # Copyright (C) FuseSource, Inc.
@@ -315,10 +315,10 @@
             org.quartz.jobStore.misfireThreshold = 60000
             org.quartz.jobStore.class = org.quartz.simpl.RAMJobStore
         </config>
-        <feature version="${project.version}">fabric-core</feature>
-        <feature version="${project.version}">fabric-configadmin</feature>
+        <feature version="${fabric.version}">fabric-core</feature>
+        <feature version="${fabric.version}">fabric-configadmin</feature>
 
-        <bundle>mvn:org.fusesource.insight/insight-graph/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.insight/insight-graph/${fabric.version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-core-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
         <bundle dependency='true'>mvn:commons-codec/commons-codec/${commons-codec-version}</bundle>
@@ -328,7 +328,7 @@
         <bundle dependency='true'>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.quartz/${quartz-version}</bundle>
     </feature>
 
-    <feature name="insight-elasticsearch" version="${project.version}" resolver="(obr)">
+    <feature name="insight-elasticsearch" version="${fabric.version}" resolver="(obr)">
         <config name="org.fusesource.insight.elasticsearch-default">
             #
             # Copyright (C) FuseSource, Inc.
@@ -357,10 +357,10 @@
         </config>
         <feature>fabric-zookeeper</feature>
         <feature>fabric-groups</feature>
-        <bundle>mvn:org.fusesource.insight/insight-elasticsearch/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.insight/insight-elasticsearch/${fabric.version}</bundle>
     </feature>
 
-    <feature name="insight-log-elasticsearch" version="${project.version}" resolver="(obr)">
+    <feature name="insight-log-elasticsearch" version="${fabric.version}" resolver="(obr)">
         <config name="org.fusesource.insight.log.elasticsearch">
             #
             # Copyright (C) FuseSource, Inc.
@@ -386,10 +386,10 @@
         </config>
         <feature>eventadmin</feature>
         <feature>insight-elasticsearch</feature>
-        <bundle>mvn:org.fusesource.insight/insight-log-elasticsearch/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.insight/insight-log-elasticsearch/${fabric.version}</bundle>
     </feature>
 
-    <feature name="fabric-hadoop" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-hadoop" version="${fabric.version}" resolver="(obr)">
         <config name="org.fusesource.fabric.hadoop">
             #
             # Copyright (C) FuseSource, Inc.
@@ -438,50 +438,50 @@
         <bundle dependency='true'>mvn:org.codehaus.jackson/jackson-core-asl/1.9.5</bundle>
         <bundle dependency='true'>mvn:org.codehaus.jackson/jackson-mapper-asl/1.9.5</bundle>
         <bundle dependency='true'>mvn:org.codehaus.jackson/jackson-jaxrs/1.9.5</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-hadoop/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-hadoop/${fabric.version}</bundle>
     </feature>
 
 
-    <feature name='virt' description='FuseSource Virt' version='${project.version}' resolver='(obr)'>
+    <feature name='virt' description='FuseSource Virt' version='${fabric.version}' resolver='(obr)'>
         <bundle>mvn:org.fusesource.fabric.virt.bundles/org.fusesource.fabric.virt.bundles.jna/${jna-bundle-version}</bundle>
         <bundle>mvn:org.fusesource.fabric.virt.bundles/org.fusesource.fabric.virt.bundles.libvirt/${libvirt-bundle-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric.virt/org.fusesource.fabric.virt.services/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.fabric.virt/org.fusesource.fabric.virt.commands/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric.virt/org.fusesource.fabric.virt.services/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric.virt/org.fusesource.fabric.virt.commands/${fabric.version}</bundle>
     </feature>
 
-    <feature name="bai" description="Fuse Business Activity Insight" version="${project.version}" resolver="(obr)">
+    <feature name="bai" description="Fuse Business Activity Insight" version="${fabric.version}" resolver="(obr)">
         <feature>camel</feature>
         <feature>camel-blueprint</feature>
-        <bundle>mvn:org.fusesource.fabric/common-util/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.bai/bai-core/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.bai/bai-agent/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/common-util/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.bai/bai-core/${fabric.version}</bundle>
+        <bundle>mvn:org.fusesource.bai/bai-agent/${fabric.version}</bundle>
     </feature>
 
-    <feature name="bai-mongodb" description="Fuse Business Activity Insight :: MongoDb Backend" version="${project.version}" resolver="(obr)">
+    <feature name="bai-mongodb" description="Fuse Business Activity Insight :: MongoDb Backend" version="${fabric.version}" resolver="(obr)">
         <feature>bai</feature>
         <feature>camel-xmljson</feature>
         <bundle>mvn:org.mongodb/mongo-java-driver/${mongo-java-driver-version}</bundle>
-        <bundle>mvn:org.fusesource.bai/bai-mongodb-backend/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.bai/bai-mongodb-backend/${fabric.version}</bundle>
 <!--
         <bundle>mvn:org.apache.camel/camel-xmljson/${camel-version}</bundle>
 -->
     </feature>
 
-    <feature name="fabric-rest" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-rest" version="${fabric.version}" resolver="(obr)">
         <feature>fabric-core</feature>
         <feature>fabric-boot-commands</feature>
         <feature>fabric-jclouds</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-rest/${project.version}/war</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-rest/${fabric.version}/war</bundle>
     </feature>
 
-    <feature name="fabric-webui" version="${project.version}" resolver="(obr)">
+    <feature name="fabric-webui" version="${fabric.version}" resolver="(obr)">
         <feature>fabric-rest</feature>
-        <bundle>mvn:org.fusesource.fmc/fmc-webui/${project.version}/war</bundle>
+        <bundle>mvn:org.fusesource.fmc/fmc-webui/${fabric.version}/war</bundle>
     </feature>
 
-    <feature name="fabric-ldap-apacheds" version="${project.version}" resolver="(obr)">
-        <configfile finalname="/data/ldap/default/fabric.ldif">mvn:org.fusesource.fabric/fabric-ldap/${project.version}/ldif/default</configfile>
-        <configfile finalname="/etc/fabric-ldap-apacheds-${project.version}.xml">mvn:org.fusesource.fabric/fabric-ldap/${project.version}/xml/apacheds</configfile>
+    <feature name="fabric-ldap-apacheds" version="${fabric.version}" resolver="(obr)">
+        <configfile finalname="/data/ldap/default/fabric.ldif">mvn:org.fusesource.fabric/fabric-ldap/${fabric.version}/ldif/default</configfile>
+        <configfile finalname="/etc/fabric-ldap-apacheds-${fabric.version}.xml">mvn:org.fusesource.fabric/fabric-ldap/${fabric.version}/xml/apacheds</configfile>
         <bundle>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.bcprov-jdk16/1.46_3</bundle>
         <bundle>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.antlr/2.7.7_5</bundle>
         <bundle>mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.commons-lang/2.4_4</bundle>
@@ -489,21 +489,21 @@
         <bundle>mvn:org.apache.servicemix.specs/org.apache.servicemix.specs.scripting-api-1.0/${servicemix-specs-version}</bundle>
         <bundle>mvn:org.apache.commons/commons-jexl/2.0.1</bundle>
         <bundle>mvn:org.apache.xbean/xbean-blueprint/${xbean-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-ldap/${project.version}</bundle>
-        <bundle>blueprint:file:etc/fabric-ldap-apacheds-${project.version}.xml</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-ldap/${fabric.version}</bundle>
+        <bundle>blueprint:file:etc/fabric-ldap-apacheds-${fabric.version}.xml</bundle>
     </feature>
 
-    <feature name="fabric-ldap-jaas" version="${project.version}" resolver="(obr)">
-        <configfile finalname="/etc/fabric-ldap-jaas-${project.version}.xml">mvn:org.fusesource.fabric/fabric-ldap/${project.version}/xml/jaas</configfile>
-        <bundle>blueprint:file:etc/fabric-ldap-jaas-${project.version}.xml</bundle>
+    <feature name="fabric-ldap-jaas" version="${fabric.version}" resolver="(obr)">
+        <configfile finalname="/etc/fabric-ldap-jaas-${fabric.version}.xml">mvn:org.fusesource.fabric/fabric-ldap/${fabric.version}/xml/jaas</configfile>
+        <bundle>blueprint:file:etc/fabric-ldap-jaas-${fabric.version}.xml</bundle>
     </feature>
 
-    <feature name="jolokia" version="${project.version}" resolver="(obr)">
+    <feature name="jolokia" version="${fabric.version}" resolver="(obr)">
         <feature version="${karaf-version}">http</feature>
-        <bundle>mvn:org.fusesource.fabric/fabric-jolokia/${project.version}</bundle>
+        <bundle>mvn:org.fusesource.fabric/fabric-jolokia/${fabric.version}</bundle>
     </feature>
 
-    <feature name="hawtio" version="${project.version}" resolver="(obr)">
+    <feature name="hawtio" version="${fabric.version}" resolver="(obr)">
         <feature version="${karaf-version}">war</feature>
         <bundle>mvn:io.hawt/hawtio-web/${hawtio-version}/war</bundle>
     </feature>

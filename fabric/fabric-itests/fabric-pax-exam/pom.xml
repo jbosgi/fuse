@@ -39,14 +39,14 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fuse-fabric</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
             <type>tar.gz</type>
         </dependency>
 
         <dependency>
             <groupId>org.jboss.amq</groupId>
             <artifactId>jboss-a-mq</artifactId>
-            <version>${project.version}</version>
+            <version>${fuse.version}</version>
             <type>tar.gz</type>
         </dependency>
 
@@ -54,13 +54,13 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-monitor</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-utils</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
             <scope>test</scope>
         </dependency>
 

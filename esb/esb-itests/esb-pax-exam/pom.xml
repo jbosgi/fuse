@@ -47,13 +47,13 @@
         <dependency>
             <groupId>org.fusesource.tooling.testing</groupId>
             <artifactId>pax-exam-karaf</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.jboss.fuse</groupId>
             <artifactId>jboss-fuse-minimal</artifactId>
-            <version>${project.version}</version>
+            <version>${fuse.version}</version>
             <type>tar.gz</type>
         </dependency>
 

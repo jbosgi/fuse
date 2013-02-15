@@ -25,7 +25,7 @@
     <fileSets>
         <!-- Expanded fabric Runtime -->
         <fileSet>
-            <directory>target/dependencies/win/fuse-fabric-${project.version}</directory>
+            <directory>target/dependencies/win/fuse-fabric-${fabric.version}</directory>
             <outputDirectory>/</outputDirectory>
             <excludes>
                 <exclude>system/**</exclude>
@@ -98,7 +98,7 @@
 
     <files>
         <file>
-            <source>${basedir}/target/dependencies/win/fuse-fabric-${project.version}/bin/fusefabric.bat</source>
+            <source>${basedir}/target/dependencies/win/fuse-fabric-${fabric.version}/bin/fusefabric.bat</source>
             <outputDirectory>/bin/</outputDirectory>
             <destName>fusemq.bat</destName>
             <fileMode>0755</fileMode>
