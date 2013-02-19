@@ -97,7 +97,7 @@
         <fabric.version>${project.version}</fabric.version>
         <fuse.version>${project.version}</fuse.version>
         <perfectus-build>047</perfectus-build>
-        <activemq-version>5.7.0.fuse-71-${perfectus-build}</activemq-version>
+        <activemq-version>5.8.0.fuse-72-SNAPSHOT</activemq-version>
         <jmdns-version>3.4.1</jmdns-version>
         <antlr-version>3.3</antlr-version>
         <archetype-packaging.version>2.2</archetype-packaging.version>
@@ -173,6 +173,7 @@
         <maven-bundle-plugin-version>2.3.4</maven-bundle-plugin-version>
         <maven-fab-plugin-version>1.16</maven-fab-plugin-version>
         <maven-jar-plugin-version>2.4</maven-jar-plugin-version>
+        <maven-notices-plugin.version>1.28</maven-notices-plugin.version>
         <maven-resources-plugin-version>2.6</maven-resources-plugin-version>
         <mina-version>2.0.7</mina-version>
         <mongo-java-driver-version>2.7.3</mongo-java-driver-version>
@@ -515,6 +516,12 @@
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-shade-plugin</artifactId>
               <version>1.5</version>
+          </plugin>
+
+          <plugin>
+              <groupId>org.fusesource.mvnplugins</groupId>
+              <artifactId>maven-notices-plugin</artifactId>
+              <version>${maven-notices-plugin.version}</version>
           </plugin>
 
           <plugin>
@@ -1449,7 +1456,7 @@
     <profile>
       <id>perfectus</id>
       <properties>
-        <perfectus-postfix>.redhat-60003</perfectus-postfix>
+        <perfectus-postfix>.redhat-60006</perfectus-postfix>
         <activemq-version>5.8.0${perfectus-postfix}</activemq-version>
         <cxf-version>2.6.0${perfectus-postfix}</cxf-version>
         <camel-version>2.10.0${perfectus-postfix}</camel-version>
