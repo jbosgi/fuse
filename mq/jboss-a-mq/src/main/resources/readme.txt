@@ -1,5 +1,5 @@
-JBoss A-MQ Enterprise
-------------------
+JBoss A-MQ
+----------
 
 Configuration
 -------------
@@ -42,7 +42,7 @@ webconsole.jms.password=<Password>
 
 Quick Start
 -----------
-To start Fuse MQ Enterprise in the background, type:
+To start JBoss A-MQ in the background, type:
 
     ${startCommand}
 
