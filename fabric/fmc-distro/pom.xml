@@ -404,7 +404,7 @@
               <repositories>
                 ${project.basedir}/target/features-repo,${project.basedir}/target/dependencies/unix/fuse-fabric-${fabric.version}/system
               </repositories>
-              <defaultParent>org.fusesource.fabric:fabric-project:${project.version}</defaultParent>
+              <defaultParent>org.fusesource.fabric:fabric-project:${project.version}:../..</defaultParent>
             </configuration>
           </execution>
         </executions>
