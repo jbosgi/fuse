@@ -27,7 +27,7 @@
 
     <groupId>org.jboss.fuse</groupId>
     <artifactId>esb-project</artifactId>
-    <version>7.2.0.redhat-SNAPSHOT</version>
+    <version>6.0.0.redhat-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>${project.artifactId}</name>
