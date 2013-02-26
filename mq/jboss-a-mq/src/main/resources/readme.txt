@@ -65,5 +65,5 @@ View the webconsole at http://localhost:8181/activemqweb
 Documentation
 -------------
 You can find documentation online at:
-http://fusesource.com/documentation/fuse-mq-enterprise-documentation
+http://www.redhat.com/products/jbossenterprisemiddleware/amq/
 
