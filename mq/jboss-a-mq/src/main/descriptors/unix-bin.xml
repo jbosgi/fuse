@@ -115,7 +115,7 @@
             <lineEnding>unix</lineEnding>
         </file>
         <file>
-            <source>${basedir}/target/dependencies/unix/fuse-fabric-${project.version}/bin/fusefabric.bat</source>
+            <source>${basedir}/target/dependencies/unix/fuse-fabric-${fabric.version}/bin/fusefabric.bat</source>
             <outputDirectory>/bin/</outputDirectory>
             <destName>a-mq.bat</destName>
             <fileMode>0755</fileMode>
