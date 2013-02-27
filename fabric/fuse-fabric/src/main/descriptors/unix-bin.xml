@@ -40,6 +40,7 @@
                 <exclude>karaf-manual*</exclude>
             </excludes>
             <fileMode>0644</fileMode>
+            <directoryMode>0775</directoryMode>
             <lineEnding>unix</lineEnding>
         </fileSet>
 
@@ -86,12 +87,14 @@
             <outputDirectory>/</outputDirectory>
             <lineEnding>unix</lineEnding>
             <fileMode>0644</fileMode>
+					  <directoryMode>0775</directoryMode>
         </fileSet>
 
         <fileSet>
             <directory>${basedir}/target/features-repo</directory>
             <outputDirectory>system</outputDirectory>
             <fileMode>0644</fileMode>
+					  <directoryMode>0775</directoryMode>
             <lineEnding>unix</lineEnding>
         </fileSet>
 
@@ -109,6 +112,7 @@
             <outputDirectory>/licenses/</outputDirectory>
             <lineEnding>unix</lineEnding>
             <fileMode>0644</fileMode>
+					  <directoryMode>0775</directoryMode>
         </fileSet>
 
     </fileSets>
