@@ -319,8 +319,8 @@
                            <configuration>
                                <target name="update-properties">
                                    <echo message="Fixing start/stop scripts in windows assembly" />
-                                   <replace file="target/dependencies/win/fuse-fabric-${fabric.version}/bin/start.bat" token="fusefabric.bat" value="a-amq.bat"/>
-                                   <replace file="target/dependencies/win/fuse-fabric-${fabric.version}/bin/stop.bat" token="fusefabric.bat" value="a-amq.bat"/>
+                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/start.bat" token="fusefabric.bat" value="a-amq.bat"/>
+                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/stop.bat" token="fusefabric.bat" value="a-amq.bat"/>
                                    <echo message="Fixing start/stop scripts in unix assembly" />
                                    <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/start" token="bin/fusefabric" value="bin/a-amq"/>
                                    <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/stop" token="bin/fusefabric" value="bin/a-amq"/>
