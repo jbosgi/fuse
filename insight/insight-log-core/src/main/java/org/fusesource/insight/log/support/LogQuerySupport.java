@@ -27,9 +27,12 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
+import java.net.URL;
 import java.net.UnknownHostException;
 
 /**
@@ -48,6 +51,27 @@ public abstract class LogQuerySupport implements LogQuerySupportMBean {
             hostName = InetAddress.getLocalHost().getHostName();
         } catch (UnknownHostException e) {
             LOG.warn("Failed to get host name: " + e, e);
+        }
+    }
+
+    protected static String loadString(URL url) throws IOException {
+        InputStream is = url.openStream();
+        if (is == null) {
+            return null;
+        }
+        try {
+            InputStreamReader reader = new InputStreamReader(is);
+            StringWriter writer = new StringWriter();
+            final char[] buffer = new char[4096];
+            int n;
+            while ( -1 != ( n = reader.read( buffer ) ) )
+            {
+                writer.write( buffer, 0, n );
+            }
+            writer.flush();
+            return writer.toString();
+        } finally {
+            is.close();
         }
     }
 
@@ -170,6 +194,57 @@ public abstract class LogQuerySupport implements LogQuerySupportMBean {
             return null;
         }
         return mapper.reader(LogFilter.class).readValue(json);
+    }
+
+    public String getSource(String mavenCoords, String className, String filePath) throws IOException {
+        // the fileName could be just a name and extension so we may have to use the className to make a fully qualified package
+        String classNamePath = null;
+        if (!Strings.isEmpty(className)) {
+            classNamePath = className.replace('.', '/') + ".java";
+        }
+        if (Strings.isEmpty(filePath)) {
+            filePath = classNamePath;
+        } else {
+            // we may have package in the className but not in the file name
+            if (filePath.lastIndexOf('/') <= 0 && classNamePath != null) {
+                int idx = classNamePath.lastIndexOf('/');
+                if (idx > 0) {
+                    filePath = classNamePath.substring(0, idx) + ensureStartsWithSlash(filePath);
+                }
+            }
+        }
+        filePath = ensureStartsWithSlash(filePath);
+
+        String coords = mavenCoords.replace(':', '/');
+        String[] array = coords.split("\\s+");
+        if (array == null || array.length < 2) {
+            return loadCoords(coords, filePath);
+        } else {
+            // lets enumerate all values if space separated
+            for (String coord : array) {
+                try {
+                    return loadCoords(coord, filePath);
+                } catch (IOException e) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("" + e);
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    protected String loadCoords(String coords, String filePath) throws IOException {
+        URL url = new URL("jar:mvn:" + coords + "/jar/sources!" + filePath);
+        return loadString(url);
+    }
+
+    public static String ensureStartsWithSlash(String path) {
+        if (path != null && !path.startsWith("/")) {
+            return "/" + path;
+        } else {
+            return path;
+        }
     }
 
 }

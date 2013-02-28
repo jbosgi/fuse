@@ -477,6 +477,7 @@
     </feature>
 
     <feature name="fabric-webui" version="${fabric.version}" resolver="(obr)">
+        <feature>war</feature>
         <feature>fabric-rest</feature>
         <bundle>mvn:org.fusesource.fmc/fmc-webui/${fabric.version}/war</bundle>
     </feature>
@@ -504,5 +505,4 @@
         <feature version="${karaf-version}">http</feature>
         <bundle>mvn:org.fusesource.fabric/fabric-jolokia/${fabric.version}</bundle>
     </feature>
-
 </features>

@@ -69,7 +69,7 @@
             org.apache.camel.*;version="[2.10,3)",
             org.apache.felix.gogo.commands.*;version="[0.10,1)",
             org.apache.felix.service.command.*;version="[0.10,1)",
-            scala*;version="[2.9,2.10]";resolution:="optional"
+            scala*;version="[2.9,2.10]"
         </fuse.osgi.import.defaults>
         <fuse.osgi.import.before.defaults />
         <fuse.osgi.import.additional />
@@ -280,10 +280,10 @@
 
     <modules>
         <module>common-util</module>
+        <module>insight</module>
         <module>tooling</module>
         <module>fabric</module>
         <module>fab</module>
-        <module>insight</module>
         <module>patch</module>
         <module>process</module>
         <module>bai</module>
@@ -529,7 +529,6 @@
               <artifactId>depends-maven-plugin</artifactId>
               <version>${depends-maven-plugin.version}</version>
           </plugin>
-
         </plugins>
     </build>
 
@@ -1490,7 +1489,7 @@
     <profile>
       <id>perfectus</id>
       <properties>
-        <perfectus-postfix>.redhat-60006</perfectus-postfix>
+        <perfectus-postfix>.redhat-60008</perfectus-postfix>
         <activemq-version>5.8.0${perfectus-postfix}</activemq-version>
         <cxf-version>2.6.0${perfectus-postfix}</cxf-version>
         <camel-version>2.10.0${perfectus-postfix}</camel-version>

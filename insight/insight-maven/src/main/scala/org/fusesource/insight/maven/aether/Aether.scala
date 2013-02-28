@@ -21,6 +21,8 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader
 import collection.mutable.ListBuffer
 import org.sonatype.aether.resolution.ArtifactResolutionException
 import org.apache.maven.model.Model
+import java.net.URL
+import org.codehaus.plexus.util.IOUtil
 
 
 object Authentications {

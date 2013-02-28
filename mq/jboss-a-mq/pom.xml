@@ -319,16 +319,17 @@
                            <configuration>
                                <target name="update-properties">
                                    <echo message="Fixing start/stop scripts in windows assembly" />
-                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/start.bat" token="fusefabric.bat" value="a-amq.bat"/>
-                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/stop.bat" token="fusefabric.bat" value="a-amq.bat"/>
+                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/start.bat" token="fusefabric.bat" value="a-mq.bat"/>
+                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/stop.bat" token="fusefabric.bat" value="a-mq.bat"/>
                                    <echo message="Fixing start/stop scripts in unix assembly" />
-                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/start" token="bin/fusefabric" value="bin/a-amq"/>
-                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/stop" token="bin/fusefabric" value="bin/a-amq"/>
+                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/start" token="bin/fusefabric" value="bin/a-mq"/>
+                                   <replace file="target/dependencies/unix/fuse-fabric-${fabric.version}/bin/stop" token="bin/fusefabric" value="bin/a-mq"/>
                                    <echo message="Updating etc/system.properties in unix assembly" />
                                    <concat destfile="target/dependencies/unix/fuse-fabric-${fabric.version}/etc/system.properties" append="true" eol="unix">
                                        <fileset file="src/main/resources/etc/system-mq.properties" />
                                    </concat>
                                    <echo file="target/dependencies/unix/fuse-fabric-${fabric.version}/etc/system.properties" append="true">profile=mq</echo>
+                                   <echo message="Updating etc/system.properties in windows assembly" />
                                    <echo message="Updating etc/config.properties in unix assembly" />
                                    <concat destfile="target/dependencies/unix/fuse-fabric-${fabric.version}/etc/config.properties" append="true" eol="unix">
                                        <fileset file="src/main/resources/etc/config-mq.properties" />

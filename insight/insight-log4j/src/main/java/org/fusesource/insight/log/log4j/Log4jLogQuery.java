@@ -31,17 +31,25 @@ import org.fusesource.insight.log.LogResults;
 import org.fusesource.insight.log.support.LogQuerySupport;
 import org.fusesource.insight.log.support.LruList;
 import org.fusesource.insight.log.support.Predicate;
+import org.ops4j.pax.url.maven.commons.MavenConfigurationImpl;
+import org.ops4j.pax.url.maven.commons.MavenSettingsImpl;
+import org.ops4j.pax.url.mvn.ServiceConstants;
+import org.ops4j.pax.url.mvn.internal.AetherBasedResolver;
+import org.ops4j.util.property.PropertiesPropertyResolver;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import static org.fusesource.insight.log.support.Strings.contains;
@@ -54,10 +62,15 @@ public class Log4jLogQuery extends LogQuerySupport implements Log4jLogQueryMBean
 
     private int size = 1000;
     private LruList<LoggingEvent> events;
+    private boolean addMavenCoordinates = true;
+    private AetherBasedResolver resolver;
+    private Properties properties = new Properties();
+    private MavenConfigurationImpl config;
 
     @PostConstruct
     public void start() {
         super.start();
+
         ILoggerFactory loggerFactory = LoggerFactory.getILoggerFactory();
         AppenderAttachable appenderAttachable = null;
         if (loggerFactory instanceof AppenderAttachable) {
@@ -69,6 +82,9 @@ public class Log4jLogQuery extends LogQuerySupport implements Log4jLogQueryMBean
         if (appenderAttachable != null) {
             Appender appender = new AppenderSkeleton() {
                 protected void append(LoggingEvent loggingEvent) {
+                    if (addMavenCoordinates) {
+                        appendMavenCoordinates(loggingEvent);
+                    }
                     getEvents().add(loggingEvent);
                 }
 
@@ -105,87 +121,87 @@ public class Log4jLogQuery extends LogQuerySupport implements Log4jLogQueryMBean
     }
 
     private Predicate<LogEvent> createPredicate(LogFilter filter) {
-    if (filter == null) {
-                return null;
-            }
-            final List<Predicate<LogEvent>> predicates = new ArrayList<Predicate<LogEvent>>();
-    
-            final Set<String> levels = filter.getLevelsSet();
-            if (levels.size() > 0) {
-                predicates.add(new Predicate<LogEvent>() {
-                    @Override
-                    public boolean matches(LogEvent event) {
-                        String level = event.getLevel();
-                        return level != null && levels.contains(level.toString());
-                    }
-                });
-            }
-            final Long before = filter.getBeforeTimestamp();
-            if (before != null) {
-                final Date date = new Date(before);
-                predicates.add(new Predicate<LogEvent>() {
-                    @Override
-                    public boolean matches(LogEvent event) {
-                        Date time = event.getTimestamp();
-                        return time != null && time.before(date);
-                    }
-                });
-            }
-            final Long after = filter.getAfterTimestamp();
-            if (after != null) {
-                final Date date = new Date(after);
-                predicates.add(new Predicate<LogEvent>() {
-                    @Override
-                    public boolean matches(LogEvent event) {
-                        Date time = event.getTimestamp();
-                        return time != null && time.after(date);
-                    }
-                });
-            }
-    
-            final String matchesText = filter.getMatchesText();
-            if (matchesText != null && matchesText.length() > 0) {
-                predicates.add(new Predicate<LogEvent>() {
-                    @Override
-                    public boolean matches(LogEvent event) {
-                        if (contains(matchesText, event.getClassName(), event.getMessage(), event.getLogger(), event.getThread())) {
-                            return true;
-                        }
-                        String[] throwableStrRep = event.getException();
-                        if (throwableStrRep != null && contains(matchesText, throwableStrRep)) {
-                            return true;
-                        }
-                        Map properties = event.getProperties();
-                        if (properties != null && contains(matchesText, properties.toString())) {
-                            return true;
-                        }
-                        return false;
-                    }
-                });
-            }
-    
-            if (predicates.size() == 0) {
-                return null;
-            } else if (predicates.size() == 1) {
-                return predicates.get(0);
-            } else {
-                return new Predicate<LogEvent>() {
-                    @Override
-                    public String toString() {
-                        return "AndPredicate" + predicates;
-                    }
-    
-                    @Override
-                    public boolean matches(LogEvent event) {
-                        for (Predicate<LogEvent> predicate : predicates) {
-                            if (!predicate.matches(event)) {
-                                return false;
-                            }
-                        }
+        if (filter == null) {
+            return null;
+        }
+        final List<Predicate<LogEvent>> predicates = new ArrayList<Predicate<LogEvent>>();
+
+        final Set<String> levels = filter.getLevelsSet();
+        if (levels.size() > 0) {
+            predicates.add(new Predicate<LogEvent>() {
+                @Override
+                public boolean matches(LogEvent event) {
+                    String level = event.getLevel();
+                    return level != null && levels.contains(level.toString());
+                }
+            });
+        }
+        final Long before = filter.getBeforeTimestamp();
+        if (before != null) {
+            final Date date = new Date(before);
+            predicates.add(new Predicate<LogEvent>() {
+                @Override
+                public boolean matches(LogEvent event) {
+                    Date time = event.getTimestamp();
+                    return time != null && time.before(date);
+                }
+            });
+        }
+        final Long after = filter.getAfterTimestamp();
+        if (after != null) {
+            final Date date = new Date(after);
+            predicates.add(new Predicate<LogEvent>() {
+                @Override
+                public boolean matches(LogEvent event) {
+                    Date time = event.getTimestamp();
+                    return time != null && time.after(date);
+                }
+            });
+        }
+
+        final String matchesText = filter.getMatchesText();
+        if (matchesText != null && matchesText.length() > 0) {
+            predicates.add(new Predicate<LogEvent>() {
+                @Override
+                public boolean matches(LogEvent event) {
+                    if (contains(matchesText, event.getClassName(), event.getMessage(), event.getLogger(), event.getThread())) {
                         return true;
                     }
-                };
-            }
+                    String[] throwableStrRep = event.getException();
+                    if (throwableStrRep != null && contains(matchesText, throwableStrRep)) {
+                        return true;
+                    }
+                    Map properties = event.getProperties();
+                    if (properties != null && contains(matchesText, properties.toString())) {
+                        return true;
+                    }
+                    return false;
+                }
+            });
+        }
+
+        if (predicates.size() == 0) {
+            return null;
+        } else if (predicates.size() == 1) {
+            return predicates.get(0);
+        } else {
+            return new Predicate<LogEvent>() {
+                @Override
+                public String toString() {
+                    return "AndPredicate" + predicates;
+                }
+
+                @Override
+                public boolean matches(LogEvent event) {
+                    for (Predicate<LogEvent> predicate : predicates) {
+                        if (!predicate.matches(event)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            };
+        }
     }
 
     protected LogResults filterLogResults(Predicate<LogEvent> predicate, int maxCount) {
@@ -267,6 +283,61 @@ public class Log4jLogQuery extends LogQuerySupport implements Log4jLogQueryMBean
         return null;
     }
 
+
+    protected void appendMavenCoordinates(LoggingEvent loggingEvent) {
+        LocationInfo information = loggingEvent.getLocationInformation();
+        if (information != null) {
+            String coordinates = MavenCoordHelper.getMavenCoordinates(information.getClassName());
+            if (coordinates != null) {
+                loggingEvent.setProperty("maven.coordinates", coordinates);
+            }
+        }
+    }
+
+    protected String loadCoords(String coords, String filePath) throws IOException {
+        String[] split = coords.split("/");
+        if (split != null && split.length > 2) {
+            String groupId = split[0];
+            String artifactId = split[1];
+            String version = split[2];
+            if (resolver == null) {
+                Properties defaultProperties = getDefaultProperties();
+                Properties systemProperties = System.getProperties();
+                if (config == null) {
+                    Properties combined = new Properties();
+                    combined.putAll(defaultProperties);
+                    combined.putAll(systemProperties);
+                    if (properties != null) {
+                        combined.putAll(properties);
+                    }
+                    config = new MavenConfigurationImpl(new PropertiesPropertyResolver(combined), ServiceConstants.PID);
+                    config.setSettings( new MavenSettingsImpl( config.getSettingsFileUrl(), config.useFallbackRepositories() ) );
+                }
+                resolver = new AetherBasedResolver(config);
+            }
+            File file = resolver.resolveFile(groupId, artifactId, "sources", "jar", version);
+            if (file.exists() && file.isFile()) {
+                String fileUri = file.toURI().toString();
+                URL url = new URL("jar:" + fileUri + "!" + filePath);
+                return loadString(url);
+            }
+        }
+        return null;
+    }
+
+    protected Properties getDefaultProperties() {
+        Properties defaultProperties = new Properties();
+        defaultProperties.setProperty("org.ops4j.pax.url.mvn.repositories",
+                "http://repo1.maven.org/maven2@id=maven.central.repo, " +
+                "http://repo.fusesource.com/nexus/content/repositories/releases@id=fusesource.release.repo, " +
+                "http://repo.fusesource.com/nexus/content/groups/ea@id=fusesource.ea.repo, " +
+                "http://svn.apache.org/repos/asf/servicemix/m2-repo@id=servicemix.repo, " +
+                "http://repository.springsource.com/maven/bundles/release@id=springsource.release.repo, " +
+                "http://repository.springsource.com/maven/bundles/external@id=springsource.external.repo, " +
+                "http://scala-tools.org/repo-releases@id=scala.repo");
+        return defaultProperties;
+    }
+
     // Properties
     //-------------------------------------------------------------------------
     public LruList<LoggingEvent> getEvents() {
@@ -286,5 +357,37 @@ public class Log4jLogQuery extends LogQuerySupport implements Log4jLogQueryMBean
 
     public void setSize(int size) {
         this.size = size;
+    }
+
+    public boolean isAddMavenCoordinates() {
+        return addMavenCoordinates;
+    }
+
+    public void setAddMavenCoordinates(boolean addMavenCoordinates) {
+        this.addMavenCoordinates = addMavenCoordinates;
+    }
+
+    public Properties getProperties() {
+        return properties;
+    }
+
+    public void setProperties(Properties properties) {
+        this.properties = properties;
+    }
+
+    public MavenConfigurationImpl getConfig() {
+        return config;
+    }
+
+    public void setConfig(MavenConfigurationImpl config) {
+        this.config = config;
+    }
+
+    public AetherBasedResolver getResolver() {
+        return resolver;
+    }
+
+    public void setResolver(AetherBasedResolver resolver) {
+        this.resolver = resolver;
     }
 }

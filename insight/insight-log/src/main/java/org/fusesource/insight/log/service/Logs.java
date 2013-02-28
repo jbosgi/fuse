@@ -19,18 +19,24 @@ package org.fusesource.insight.log.service;
 
 import org.fusesource.insight.log.LogEvent;
 import org.fusesource.insight.log.LogFilter;
+import org.fusesource.insight.log.support.MavenCoordinates;
 import org.fusesource.insight.log.support.Predicate;
 import org.fusesource.insight.log.support.Strings;
 import org.ops4j.pax.logging.spi.PaxLevel;
 import org.ops4j.pax.logging.spi.PaxLocationInfo;
 import org.ops4j.pax.logging.spi.PaxLoggingEvent;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.FrameworkUtil;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  */
@@ -42,7 +48,7 @@ public class Logs {
         answer.setLogger(event.getLoggerName());
         answer.setTimestamp(new Date(event.getTimeStamp()));
         answer.setThread(event.getThreadName());
-        answer.setException(event.getThrowableStrRep());
+        answer.setException(addMavenCoord(event.getThrowableStrRep()));
 
         Map eventProperties = event.getProperties();
         if (eventProperties != null && eventProperties.size() > 0) {
@@ -53,6 +59,12 @@ public class Logs {
                 Object value = entry.getValue();
                 if (key != null && value != null) {
                     properties.put(toString(key), toString(value));
+                }
+            }
+            if (properties.get("maven.coordinates") == null) {
+                String mavenCoord = getMavenCoordinates(event);
+                if (mavenCoord != null && !mavenCoord.isEmpty()) {
+                    properties.put("maven.coordinates", mavenCoord);
                 }
             }
             answer.setProperties(properties);
@@ -158,6 +170,78 @@ public class Logs {
                 }
             };
         }
+    }
+
+    private static Map<String, String> MAVEN_COORDINATES = new ConcurrentHashMap<String, String>();
+
+    private static String[] addMavenCoord(String[] throwable) {
+        if (throwable != null) {
+            String[] newThrowable = new String[throwable.length];
+            for (int i = 0; i < newThrowable.length; i++) {
+                newThrowable[i] = addMavenCoord(throwable[i]);
+            }
+            return newThrowable;
+        }
+        return throwable;
+    }
+
+    private static String addMavenCoord(String line) {
+        if (line.endsWith("]")) {
+            int index = line.lastIndexOf('[');
+            if (index > 0) {
+                String str = line.substring(index + 1, line.length() - 1);
+                index = str.indexOf(':');
+                if (index > 0) {
+                    String idStr = str.substring(0, index);
+                    String mvn = getMavenCoordinates(idStr);
+                    if (mvn != null) {
+                        return line + "[" + mvn + "]";
+                    }
+                }
+            }
+        }
+        return line;
+    }
+
+    private static String getMavenCoordinates(PaxLoggingEvent event) {
+        Map props = event.getProperties();
+        Object id = (props != null) ? props.get("bundle.id") : null;
+        if (id == null) {
+            return null;
+        }
+        return getMavenCoordinates(id.toString());
+    }
+
+    private static String getMavenCoordinates(String bundleIdStr) {
+        long bundleId;
+        try {
+            bundleId = Long.parseLong(bundleIdStr);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        return getMavenCoordinates(bundleId);
+    }
+
+    private static String getMavenCoordinates(long bundleId) {
+        Bundle m_bundle = FrameworkUtil.getBundle(Logs.class).getBundleContext().getBundle(bundleId);
+        String id = Long.toString(m_bundle.getBundleId()) + ":" + Long.toString(m_bundle.getLastModified());
+        String maven = MAVEN_COORDINATES.get(id);
+        if (maven == null) {
+            try {
+                Enumeration<URL> e = m_bundle.findEntries("META-INF/maven/", "pom.properties", true);
+                StringBuilder buf = new StringBuilder();
+                while (e != null && e.hasMoreElements()) {
+                    URL url = e.nextElement();
+                    MavenCoordinates.appendMavenCoordinateFromPomProperties(url.openStream(), buf);
+                }
+                maven = buf.toString();
+            } catch (Throwable t) {
+                // Ignore
+                maven = "";
+            }
+            MAVEN_COORDINATES.put(id, maven);
+        }
+        return maven;
     }
 
 }
