@@ -88,7 +88,7 @@ public class DeploymentAgentTest extends FabricTestSupport {
 		//We are just want to use a feature repository that is not part of the distribution.
 		System.out.println(executeCommand("fabric:profile-create --parents camel test-profile"));
 		System.out.println(executeCommand("fabric:version-create --parent 1.0 1.1"));
-		System.out.println(executeCommand("fabric:profile-edit --fabs mvn:org.jboss.fuse.examples/cbr/" + System.getProperty("fabric.version") + " test-profile 1.1"));
+		System.out.println(executeCommand("fabric:profile-edit --fabs mvn:org.jboss.fuse.examples/cbr/" + System.getProperty("fuse.version") + " test-profile 1.1"));
 		//We remove all repositories from agent config but the maven central to rely on the fabric-maven-proxy.
 		//Also remove local repository
 		System.out.println(executeCommand("profile-edit --pid org.fusesource.fabric.agent/org.ops4j.pax.url.mvn.repositories=http://repo1.maven.org/maven2@id=m2central default 1.1"));
@@ -126,7 +126,7 @@ public class DeploymentAgentTest extends FabricTestSupport {
 		//We are just want to use a feature repository that is not part of the distribution.
 		System.out.println(executeCommand("fabric:profile-create --parents camel test-profile"));
 		System.out.println(executeCommand("fabric:version-create --parent 1.0 1.1"));
-		System.out.println(executeCommand("fabric:profile-edit --repositories mvn:org.jboss.fuse.examples/project/" + System.getProperty("fabric.version") + "/xml/features test-profile 1.1"));
+		System.out.println(executeCommand("fabric:profile-edit --repositories mvn:org.jboss.fuse.examples/project/" + System.getProperty("fuse.version") + "/xml/features test-profile 1.1"));
 		System.out.println(executeCommand("fabric:profile-edit --features example-cbr test-profile 1.1"));
 
 		//We remove all repositories from agent config but the maven central to rely on the fabric-maven-proxy.
@@ -157,7 +157,8 @@ public class DeploymentAgentTest extends FabricTestSupport {
 		return new Option[]{
 				new DefaultCompositeOption(fabricDistributionConfiguration()),
 				editConfigurationFilePut("etc/system.properties", "fabric.version", MavenUtils.asInProject().getVersion(GROUP_ID, ARTIFACT_ID)),
-				debugConfiguration("5005", false)
+				copySystemProperty("fuse.version"),
+				//debugConfiguration("5005", false)
 		};
 	}
 }

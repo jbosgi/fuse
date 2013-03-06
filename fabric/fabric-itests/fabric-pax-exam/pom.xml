@@ -159,6 +159,7 @@
                         <feature>${feature}</feature>
                         <perfectus-build>${perfectus-build}</perfectus-build>
                         <fabric.version>${fabric.version}</fabric.version>
+                        <fuse.version>${fuse.version}</fuse.version>
                         <project-version>${project.version}</project-version>
                         <fabricitest.rackspace.identity>${fabricitest.rackspace.identity}</fabricitest.rackspace.identity>
                         <fabricitest.rackspace.credential>${fabricitest.rackspace.credential}</fabricitest.rackspace.credential>
