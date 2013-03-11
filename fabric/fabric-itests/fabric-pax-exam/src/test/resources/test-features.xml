@@ -15,11 +15,11 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
-<features name="fabric-itests-feature-${project.version}"
+<features name="fabric-itests-feature-${fuse.version}"
           xmlns="http://karaf.apache.org/xmlns/features/v1.0.0">
 
-    <feature name="example-cbr" version="${project.version}">
-        <bundle>fab:mvn:org.jboss.fuse.examples/cbr/${project.version}</bundle>
+    <feature name="example-cbr" version="${fuse.version}">
+        <bundle>fab:mvn:org.jboss.fuse.examples/cbr/${fuse.version}</bundle>
     </feature>
 
 </features>
