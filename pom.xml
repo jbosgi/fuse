@@ -97,7 +97,7 @@
 
         <fabric.version>7.2.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.0.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>012</perfectus-build>
+        <perfectus-build>019</perfectus-build>
         <activemq-version>5.8.0.redhat-60${perfectus-build}</activemq-version>
         <jmdns-version>3.4.1</jmdns-version>
         <aether-version>1.11</aether-version>
