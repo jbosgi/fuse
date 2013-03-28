@@ -209,6 +209,7 @@
     <feature name="mq-web-console" version="${fuse.version}" resolver="(obr)">
         <feature version="[2,3)">war</feature>
         <feature>eventadmin</feature>
+        <configfile finalname="/etc/org.apache.activemq.webconsole.cfg">mvn:org.jboss.amq/mq-web-console/${fuse.version}/cfg/mq-web-console</configfile>
         <bundle>mvn:org.jboss.amq/mq-web-console/${fuse.version}/war</bundle>
     </feature>
 
