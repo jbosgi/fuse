@@ -97,7 +97,7 @@
 
         <fabric.version>7.2.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.0.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>019</perfectus-build>
+        <perfectus-build>022</perfectus-build>
         <activemq-version>5.8.0.redhat-60${perfectus-build}</activemq-version>
         <jmdns-version>3.4.1</jmdns-version>
         <aether-version>1.11</aether-version>
@@ -115,6 +115,7 @@
         <aries.version>1.0.0</aries.version>
         <aries.proxy.version>1.0.1.redhat-60${perfectus-build}</aries.proxy.version>
         <aries-proxy-version>${aries.proxy.version}</aries-proxy-version>
+        <asm.version>4.1</asm.version>
         <asm.bundle.version>3.3.1_1</asm.bundle.version>
         <bndlib-version>1.43.0</bndlib-version>
         <brew-version>0.2.11</brew-version>
