@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.fusesource.fabric</groupId>
         <artifactId>fabric-scala</artifactId>
-        <version>7.2.0.redhat-SNAPSHOT</version>
+        <version>7.2.0.redhat-024</version>
         <relativePath>../fabric-scala</relativePath>
     </parent>
 
