@@ -21,6 +21,7 @@ import org.apache.camel.impl.DefaultEndpoint;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.fusesource.fabric.groups.Group;
+import org.fusesource.fabric.groups.Member;
 
 /**
  * Creates an endpoint which uses FABRIC to map a logical name to physical endpoint names
@@ -30,12 +31,14 @@ public class FabricPublisherEndpoint extends DefaultEndpoint {
 
     private final FabricComponent component;
     private final Group group;
+    private final Member<CamelNodeState> member;
     private final String child;
 
     public FabricPublisherEndpoint(String uri, FabricComponent component, Group group, String child) {
         super(uri, component);
         this.component = component;
         this.group = group;
+        this.member = group.createMember(CamelNodeState.class);
         this.child = child;
     }
 
@@ -59,8 +62,15 @@ public class FabricPublisherEndpoint extends DefaultEndpoint {
 
     @Override
     public void start() throws Exception {
+        if (isStarting() || isStarted()) {
+            return;
+        }
         super.start();
-        group.join(child.getBytes("UTF-8"));
+        CamelNodeState state = new CamelNodeState();
+        state.id = getId();
+        state.agent = System.getProperty("karaf.name");
+        state.processor = child;
+        member.join(state);
     }
 
     @Override

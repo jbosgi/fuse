@@ -35,10 +35,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
 import org.fusesource.fabric.groups.Group;
+import org.fusesource.fabric.groups.GroupFactory;
 import org.fusesource.fabric.groups.NodeState;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.fusesource.fabric.groups.Singleton;
+import org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory;
 import org.fusesource.fabric.zookeeper.IZKClient;
 import org.fusesource.fabric.zookeeper.internal.ZKClient;
 import org.linkedin.util.clock.Timespan;
@@ -61,7 +62,7 @@ public class ClusteredSingletonLifecycleStrategy implements LifecycleStrategy {
 
     IZKClient zkClient;
     boolean managedZkClient;
-    ClusteredSingleton<CamelNode> singleton = new ClusteredSingleton<CamelNode>(CamelNode.class);
+    Singleton<CamelNode> singleton;
 
     static void info(String msg, Object... args) {
         if(LOG.isInfoEnabled()) {
@@ -76,7 +77,7 @@ public class ClusteredSingletonLifecycleStrategy implements LifecycleStrategy {
         //        @JsonProperty
         //        String services[];
         @JsonProperty
-        String container;
+        String agent;
         @JsonProperty
         Boolean started;
 
@@ -88,7 +89,7 @@ public class ClusteredSingletonLifecycleStrategy implements LifecycleStrategy {
     CamelNode createState() {
         CamelNode state = new CamelNode();
         state.id = id;
-        state.container = System.getProperty("karaf.name");
+        state.agent = System.getProperty("karaf.name");
         state.started = started.get();
 //        state.services = services.toArray(new String[services.size()]);
         return state;
@@ -107,7 +108,9 @@ public class ClusteredSingletonLifecycleStrategy implements LifecycleStrategy {
             managedZkClient = false;
         }
 
-        group = ZooKeeperGroupFactory.create(zkClient, "/fabric/camel-clusters/" + groupName);
+        GroupFactory factory = new ZooKeeperGroupFactory(zkClient);
+        group = factory.createGroup("/fabric/camel-clusters/" + groupName);
+        singleton = factory.createSingleton(CamelNode.class);
         singleton.start(group);
         singleton.join(createState());
 

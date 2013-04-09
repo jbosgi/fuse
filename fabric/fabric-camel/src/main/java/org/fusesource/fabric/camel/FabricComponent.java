@@ -24,7 +24,9 @@ import org.apache.camel.util.URISupport;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.fusesource.fabric.groups.GroupFactory;
+import org.fusesource.fabric.groups.Singleton;
+import org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -36,7 +38,7 @@ import java.util.Map;
 public class FabricComponent extends ZKComponentSupport {
     private static final transient Log LOG = LogFactory.getLog(FabricComponent.class);
 
-    private String zkRoot = "/fabric/registry/camel/endpoints";
+    private String zkRoot = "camel/endpoints";
     private LoadBalancerFactory loadBalancerFactory = new DefaultLoadBalancerFactory();
     private ProducerCache producerCache;
     private int cacheSize = 1000;
@@ -108,12 +110,12 @@ public class FabricComponent extends ZKComponentSupport {
             if (params != null && params.size() > 0) {
                 childUri = childUri + "?" + URISupport.createQueryString(params);
             }
-            Group group = ZooKeeperGroupFactory.create(getZkClient(), fabricPath);
+            Group group = new ZooKeeperGroupFactory(getZkClient()).createGroup(fabricPath);
             return new FabricPublisherEndpoint(uri, this, group, childUri);
 
         } else {
             String fabricPath = getFabricPath(remaining);
-            Group group = ZooKeeperGroupFactory.create(getZkClient(), fabricPath);
+            Group group = new ZooKeeperGroupFactory(getZkClient()).createGroup(fabricPath);
             return new FabricLocatorEndpoint(uri, this, group);
         }
     }

@@ -18,15 +18,13 @@
 package org.fusesource.fabric.git.http;
 
 import org.eclipse.jgit.http.server.GitServlet;
+import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.git.GitNode;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
 import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.fusesource.fabric.groups.GroupFactory;
+import org.fusesource.fabric.groups.Singleton;
 import org.fusesource.fabric.utils.SystemProperties;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.linkedin.zookeeper.client.LifecycleListener;
 import org.osgi.framework.Constants;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
@@ -42,16 +40,16 @@ import java.io.FileNotFoundException;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
-public class GitHttpServerRegistrationHandler implements LifecycleListener, ConfigurationListener, ChangeListener {
+public class GitHttpServerRegistrationHandler implements ConfigurationListener, ChangeListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GitHttpServerRegistrationHandler.class);
 
-    private final ClusteredSingleton<GitNode> singleton = new ClusteredSingleton<GitNode>(GitNode.class);
-    private IZKClient zookeeper = null;
-    private boolean connected = false;
+    private FabricService fabricService;
+    private GroupFactory groupFactory;
     private final String name = System.getProperty(SystemProperties.KARAF_NAME);
 
     private Group group;
+    private Singleton<GitNode> singleton;
 
     private HttpService httpService;
     private GitServlet gitServlet;
@@ -62,15 +60,28 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
     private ConfigurationAdmin configurationAdmin;
 
     public GitHttpServerRegistrationHandler() {
-        singleton.add(this);
     }
 
 
     public void init() {
+        group = groupFactory.createGroup("git");
+        singleton = groupFactory.createSingleton(GitNode.class);
+        singleton.add(this);
+        singleton.start(group);
+
+        if (httpService != null) {
+            singleton.join(createState());
+        }
     }
 
     public void destroy() {
-        onDisconnected();
+        try {
+            if (group != null) {
+                group.close();
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to remove git server from registry.", e);
+        }
         unbindHttpService(null);
     }
 
@@ -93,9 +104,7 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
             initParams.put("export-all", "true");
             httpService.registerServlet("/git", gitServlet, initParams, secure);
 
-            if (connected) {
-                singleton.join(createState());
-            }
+            singleton.join(createState());
         } catch (Exception e) {
             LOGGER.error("Error while registering git servlet", e);
         }
@@ -104,39 +113,13 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
     public synchronized void unbindHttpService(HttpService oldService) {
         try {
             if (httpService != null) {
-                if (connected) {
-                    singleton.leave();
-                }
+                singleton.leave();
                 httpService.unregister("/git");
             }
         } catch (Exception ex) {
             LOGGER.warn("Http service returned error on servlet unregister. Possibly the service has already been stopped");
         }
         this.httpService = null;
-    }
-
-
-    @Override
-    public synchronized void onConnected() {
-        connected = true;
-        group = ZooKeeperGroupFactory.create(zookeeper, ZkPath.GIT.getPath());
-        singleton.start(group);
-
-        if (httpService != null) {
-            singleton.join(createState());
-        }
-    }
-
-    @Override
-    public synchronized void onDisconnected() {
-        connected = false;
-        try {
-            if (group != null) {
-                group.close();
-            }
-        } catch (Exception e) {
-            LOGGER.warn("Failed to remove git server from registry.", e);
-        }
     }
 
     @Override
@@ -167,14 +150,15 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
     public void configurationEvent(ConfigurationEvent event) {
         if (event.getPid().equals("org.ops4j.pax.web") && event.getType() == ConfigurationEvent.CM_UPDATED) {
             this.port = getPortFromConfig();
-            if (httpService != null && connected) {
+            if (httpService != null) {
                 singleton.update(createState());
             }
         }
     }
 
     GitNode createState() {
-        String fabricRepoUrl = "http://${zk:" + name + "/ip}:" + getPortSafe() + "/git/fabric/";
+        String ip = fabricService.getCurrentContainer().getIp();
+        String fabricRepoUrl = "http://" + ip + ":" + getPortSafe() + "/git/fabric/";
         GitNode state = new GitNode();
         state.setId("fabric-repo");
         state.setUrl(fabricRepoUrl);
@@ -248,11 +232,19 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
         this.configurationAdmin = configurationAdmin;
     }
 
-    public IZKClient getZookeeper() {
-        return zookeeper;
+    public GroupFactory getGroupFactory() {
+        return groupFactory;
     }
 
-    public void setZookeeper(IZKClient zookeeper) {
-        this.zookeeper = zookeeper;
+    public void setGroupFactory(GroupFactory groupFactory) {
+        this.groupFactory = groupFactory;
+    }
+
+    public FabricService getFabricService() {
+        return fabricService;
+    }
+
+    public void setFabricService(FabricService fabricService) {
+        this.fabricService = fabricService;
     }
 }

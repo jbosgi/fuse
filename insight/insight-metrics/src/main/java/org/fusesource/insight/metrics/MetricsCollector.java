@@ -24,11 +24,10 @@ import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
 import org.fusesource.fabric.groups.Group;
+import org.fusesource.fabric.groups.GroupFactory;
 import org.fusesource.fabric.groups.NodeState;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
-import org.fusesource.fabric.zookeeper.IZKClient;
+import org.fusesource.fabric.groups.Singleton;
 import org.fusesource.insight.metrics.model.MBeanAttrs;
 import org.fusesource.insight.metrics.model.MBeanOpers;
 import org.fusesource.insight.metrics.model.Query;
@@ -46,8 +45,6 @@ import org.osgi.util.tracker.ServiceTrackerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.io.IOException;
@@ -98,7 +95,7 @@ public class MetricsCollector implements MetricsCollectorMBean {
 
     private BundleContext bundleContext;
     private FabricService fabricService;
-    private IZKClient zookeeper;
+    private GroupFactory groupFactory;
 
     private ScheduledThreadPoolExecutor executor;
     private Map<Query, QueryState> queries = new ConcurrentHashMap<Query, QueryState>();
@@ -123,7 +120,7 @@ public class MetricsCollector implements MetricsCollectorMBean {
         boolean lastResultSent;
         long lastSent;
         Map metadata;
-        ClusteredSingleton<QueryNodeState> lock;
+        Singleton<QueryNodeState> lock;
 
         public void close() {
             future.cancel(false);
@@ -180,8 +177,8 @@ public class MetricsCollector implements MetricsCollectorMBean {
         this.fabricService = fabricService;
     }
 
-    public void setZookeeper(IZKClient zookeeper) {
-        this.zookeeper = zookeeper;
+    public void setGroupFactory(GroupFactory groupFactory) {
+        this.groupFactory = groupFactory;
     }
 
     @Override
@@ -294,7 +291,7 @@ public class MetricsCollector implements MetricsCollectorMBean {
                     // Clustered stats ?
 
                     if (q.getLock() != null) {
-                        state.lock = new ClusteredSingleton<QueryNodeState>(QueryNodeState.class);
+                        state.lock = groupFactory.createSingleton(QueryNodeState.class);
                         state.lock.add(new ChangeListener() {
                             @Override
                             public void changed() {
@@ -335,8 +332,7 @@ public class MetricsCollector implements MetricsCollectorMBean {
     protected synchronized Group startGroup(String lock) {
         if (LOCK_GLOBAL.equals(lock)) {
             if (globalGroup == null) {
-                globalGroup = ZooKeeperGroupFactory.create(zookeeper,
-                                "/fabric/registry/clusters/insight-metrics/global");
+                globalGroup = groupFactory.createGroup("insight-metrics/global");
             }
             return globalGroup;
         } else if (LOCK_HOST.equals(lock)) {
@@ -347,8 +343,7 @@ public class MetricsCollector implements MetricsCollectorMBean {
                 } catch (UnknownHostException e) {
                     throw new IllegalStateException("Unable to retrieve host name", e);
                 }
-                hostGroup = ZooKeeperGroupFactory.create(zookeeper,
-                                "/fabric/registry/clusters/insight-metrics/host-" + host);
+                hostGroup = groupFactory.createGroup("insight-metrics/host-" + host);
             }
             return hostGroup;
         } else {

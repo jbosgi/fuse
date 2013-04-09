@@ -14,16 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.cxf;
+package org.fusesource.fabric.groups;
 
-import org.fusesource.fabric.groups.Member;
-import org.fusesource.fabric.groups.Singleton;
+import java.util.Map;
 
-import java.util.List;
+public interface Member<T extends NodeState> {
 
-public interface LoadBalanceStrategy {
-    void setMember(Member<CxfNodeState> member);
-    Member<CxfNodeState> getMember();
-    List<String> getAlternateAddressList();
-    String getNextAlternateAddress();
+    /**
+     * Registers a change listener which will be called
+     * when the cluster membership changes.
+     */
+    void add(ChangeListener listener);
+
+    /**
+     * Removes a previously added change listener.
+     */
+    void remove(ChangeListener listener);
+
+    boolean connected();
+
+    void start(Group group);
+
+    void stop();
+
+    void join(T state);
+
+    void update(T state);
+
+    void leave();
+
+    Map<String, T> members();
+
 }

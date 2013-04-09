@@ -27,11 +27,11 @@
   </cm:property-placeholder>
 
   <reference id="fabricService" interface="org.fusesource.fabric.api.FabricService" />
-  <reference id="zookeeper" interface="org.fusesource.fabric.zookeeper.IZKClient" />
+  <reference id="groupFactory" interface="org.fusesource.fabric.groups.GroupFactory" />
 
     <bean id="jmxCollector" class="org.fusesource.insight.metrics.MetricsCollector" init-method="start" destroy-method="stop">
         <property name="fabricService" ref="fabricService"/>
-        <property name="zookeeper" ref="zookeeper"/>
+        <property name="groupFactory" ref="groupFactory"/>
         <property name="bundleContext" ref="blueprintBundleContext"/>
         <property name="defaultDelay" value="${defaultDelay}" />
         <property name="threadPoolSize" value="${threadPoolSize}" />

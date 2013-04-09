@@ -16,11 +16,12 @@
  */
 package org.fusesource.fabric.groups
 
+import internal.{ZooKeeperGroupFactory, ClusteredSupport, BaseNodeState, ClusteredSingleton}
 import org.scalatest.matchers.ShouldMatchers
 import java.util.concurrent.TimeUnit._
 import org.codehaus.jackson.annotate.JsonProperty
 
-class AddressNodeState extends NodeState {
+class AddressNodeState extends BaseNodeState {
 
   @JsonProperty
   var id:String = _
@@ -66,7 +67,7 @@ class ClusteredSingletonTest extends ZooKeeperFunSuiteSupport with ShouldMatcher
     singleton1.join
     within(600, SECONDS) {
       expect(true)(singleton1.isMaster)
-      expect(1)(singleton1.members.get("node").get.size)
+      expect(1)(singleton1.membersMap.get("node").get.size)
     }
 
     // 2nd node in becomes a slave.
@@ -78,20 +79,20 @@ class ClusteredSingletonTest extends ZooKeeperFunSuiteSupport with ShouldMatcher
 
       expect(true)(singleton1.isMaster)
       expect(false)(singleton2.isMaster)
-      expect(2)(singleton2.members.get("node").get.size)
+      expect(2)(singleton2.membersMap.get("node").get.size)
     }
 
     // Both should have the same view of the cluster now.
-    expect(singleton1.members.get("node").map(_.map(_._2.address)))(singleton2.members.get("node").map(_.map(_._2.address)))
+    expect(singleton1.membersMap.get("node").map(_.map(_._2.address)))(singleton2.membersMap.get("node").map(_.map(_._2.address)))
 
     // Members are kept in an ordered list of when they joined.
-    expect(List("localhost:80", "localhost:81"))(singleton1.members.get("node").get.toList.map(_._2.address))
+    expect(List("localhost:80", "localhost:81"))(singleton1.membersMap.get("node").get.toList.map(_._2.address))
 
     // Check updating member data...
     singleton1.address = "localhost:82"
     singleton1.update
     within(2, SECONDS) {
-      expect(List("localhost:82", "localhost:81"))(singleton1.members.get("node").get.toList.map(_._2.address))
+      expect(List("localhost:82", "localhost:81"))(singleton1.membersMap.get("node").get.toList.map(_._2.address))
     }
 
     // Check leaving the cluster

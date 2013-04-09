@@ -14,16 +14,14 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
-<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
-           xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0">
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0">
 
-    <reference id="groupFactory" interface="org.fusesource.fabric.groups.GroupFactory"/>
+    <reference id="zookeeper" interface="org.fusesource.fabric.zookeeper.IZKClient"/>
 
-    <bean id="fabricGitService" class="org.fusesource.fabric.git.internal.FabricGitServiceImpl"
-                init-method="init" destroy-method="destroy">
-		<property name="groupFactory" ref="groupFactory"/>
-	</bean>
+    <bean id="groupFactory" class="org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory">
+        <argument ref="zookeeper"/>
+    </bean>
 
-	<service ref="fabricGitService" interface="org.fusesource.fabric.git.FabricGitService" />
+    <service ref="groupFactory" interface="org.fusesource.fabric.groups.GroupFactory" />
 
 </blueprint>

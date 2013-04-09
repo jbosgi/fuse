@@ -28,7 +28,9 @@ import org.apache.cxf.endpoint.ServerLifeCycleManager;
 import org.apache.cxf.feature.AbstractFeature;
 import org.apache.cxf.interceptor.InterceptorProvider;
 import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.fusesource.fabric.groups.GroupFactory;
+import org.fusesource.fabric.groups.Member;
+import org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory;
 import org.fusesource.fabric.zookeeper.IZKClient;
 import org.fusesource.fabric.zookeeper.internal.ZKClient;
 import org.linkedin.util.clock.Timespan;
@@ -49,6 +51,7 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
     // Default ZooKeeper connection timeout
     private long maximumConnectionTimeout = 10 * 1000L;
     private volatile Group group;
+    private volatile Member<CxfNodeState> member;
     private LoadBalanceStrategy loadBalanceStrategy;
 
     private ServerAddressResolver addressResolver;
@@ -90,7 +93,7 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
 
     public void initialize(Bus bus) {
         try {
-            FabricServerListener lister = new FabricServerListener(getGroup(), addressResolver);
+            FabricServerListener lister = new FabricServerListener(getMember(), addressResolver);
             // register the listener itself
             ServerLifeCycleManager mgr = bus.getExtension(ServerLifeCycleManager.class);
             if (mgr != null) {
@@ -119,6 +122,14 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
              group = ZooKeeperGroupFactory.create(getZkClient(), zkRoot + fabricPath);
          }
         return group;
+    }
+
+    public synchronized Member<CxfNodeState> getMember() throws Exception {
+        if (member == null) {
+            GroupFactory gf = new ZooKeeperGroupFactory(getZkClient());
+            member = gf.createMember(CxfNodeState.class);
+        }
+        return member;
     }
 
     public void destroy() throws Exception {
@@ -173,8 +184,8 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
         if (loadBalanceStrategy == null) {
             loadBalanceStrategy = getDefaultLoadBalanceStrategy();
         }
-        if (loadBalanceStrategy.getGroup() == null) {
-            loadBalanceStrategy.setGroup(getGroup());
+        if (loadBalanceStrategy.getMember() == null) {
+            loadBalanceStrategy.setMember(getMember());
         }
         return loadBalanceStrategy;
     }

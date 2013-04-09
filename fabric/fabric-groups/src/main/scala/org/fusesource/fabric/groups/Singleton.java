@@ -14,16 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.cxf;
-
-import org.fusesource.fabric.groups.Member;
-import org.fusesource.fabric.groups.Singleton;
+package org.fusesource.fabric.groups;
 
 import java.util.List;
 
-public interface LoadBalanceStrategy {
-    void setMember(Member<CxfNodeState> member);
-    Member<CxfNodeState> getMember();
-    List<String> getAlternateAddressList();
-    String getNextAlternateAddress();
+public interface Singleton<T extends NodeState> extends Member<T> {
+
+    boolean isMaster();
+
+    T master();
+
+    List<T> slaves();
+
 }

@@ -16,9 +16,9 @@
  */
 package org.fusesource.fabric.groups.internal
 
-import org.fusesource.fabric.groups.ChangeListener
 import org.slf4j.{Logger, LoggerFactory}
 import java.util.concurrent.TimeUnit
+import org.fusesource.fabric.groups.ChangeListener
 
 
 object ChangeListenerSupport {

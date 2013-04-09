@@ -21,7 +21,7 @@ import java.util.Map;
 
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.fusesource.fabric.groups.ClusteredSupport$;
+import org.fusesource.fabric.groups.internal.ClusteredSupport$;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

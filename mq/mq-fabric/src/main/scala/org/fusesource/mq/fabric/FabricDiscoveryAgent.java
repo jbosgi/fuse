@@ -18,6 +18,7 @@ package org.fusesource.mq.fabric;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,10 +31,12 @@ import org.apache.activemq.transport.discovery.DiscoveryAgent;
 import org.apache.activemq.transport.discovery.DiscoveryListener;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
+import org.fusesource.fabric.groups.GroupFactory;
+import org.fusesource.fabric.groups.Singleton;
+import org.fusesource.fabric.groups.internal.ClusteredSingleton;
 import org.fusesource.fabric.groups.Group;
 import org.fusesource.fabric.groups.NodeState;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory;
 import org.fusesource.fabric.zookeeper.IZKClient;
 import org.fusesource.fabric.zookeeper.internal.ZKClient;
 import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
@@ -46,7 +49,7 @@ import org.osgi.util.tracker.ServiceTrackerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCustomizer {
+public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCustomizer<IZKClient, IZKClient> {
     
     private static final Logger LOG = LoggerFactory.getLogger(FabricDiscoveryAgent.class);
 
@@ -82,17 +85,17 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
     }
 
     @Override
-    public Object addingService(ServiceReference serviceReference) {
-        zkClient = (IZKClient) context.getService(serviceReference);
+    public IZKClient addingService(ServiceReference<IZKClient> serviceReference) {
+        zkClient = context.getService(serviceReference);
         return zkClient;
     }
 
     @Override
-    public void modifiedService(ServiceReference serviceReference, Object o) {
+    public void modifiedService(ServiceReference<IZKClient> serviceReference, IZKClient o) {
     }
 
     @Override
-    public void removedService(ServiceReference serviceReference, Object o) {
+    public void removedService(ServiceReference<IZKClient> serviceReference, IZKClient o) {
     }
 
     static class ActiveMQNode implements NodeState {
@@ -116,29 +119,14 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
         return state;
     }
     
-    ClusteredSingleton<ActiveMQNode> singleton = new ClusteredSingleton<ActiveMQNode>(ActiveMQNode.class);
+    Singleton<ActiveMQNode> singleton;
 
     public FabricDiscoveryAgent() {
         if (FrameworkUtil.getBundle(getClass()) != null) {
             context = FrameworkUtil.getBundle(getClass()).getBundleContext();
-            tracker = new ServiceTracker(context, IZKClient.class.getName(), this);
+            tracker = new ServiceTracker<IZKClient, IZKClient>(context, IZKClient.class.getName(), this);
             tracker.open();
         }
-
-        singleton.add(new ChangeListener(){
-            @Override
-            public void changed() {
-                update(singleton.masters());
-            }
-
-            @Override
-            public void connected() {
-                changed();
-            }
-            public void disconnected() {
-                changed();
-            }
-        });
     }
 
 
@@ -254,8 +242,23 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
                 managedZkClient = false;
             }
 
-            group = ZooKeeperGroupFactory.create(zkClient, "/fabric/registry/clusters/fusemq/" + groupName);
-            singleton.start(group);
+            GroupFactory gf = new ZooKeeperGroupFactory(zkClient);
+            group = gf.createGroup("fusemq/" + groupName);
+            singleton = group.createSingleton(ActiveMQNode.class);
+            singleton.add(new ChangeListener(){
+                @Override
+                public void changed() {
+                    update(singleton.members().values());
+                }
+
+                @Override
+                public void connected() {
+                    changed();
+                }
+                public void disconnected() {
+                    changed();
+                }
+            });
             if( id!=null ) {
                 singleton.join(createState());
             }
@@ -285,7 +288,7 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
         }
     }
 
-    private void update(ActiveMQNode[] members) {
+    private void update(Collection<ActiveMQNode> members) {
 
         // Find new registered services...
         DiscoveryListener discoveryListener = this.discoveryListener.get();
@@ -360,7 +363,7 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
         this.zkClient = zkClient;
     }
 
-    public ClusteredSingleton<ActiveMQNode> getSingleton() {
+    public Singleton<ActiveMQNode> getSingleton() {
         return singleton;
     }
 

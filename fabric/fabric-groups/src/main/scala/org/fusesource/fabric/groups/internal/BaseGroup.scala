@@ -14,25 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.groups
+package org.fusesource.fabric.groups.internal
 
-import internal.ZooKeeperGroup
-import org.apache.zookeeper.data.ACL
-import org.apache.zookeeper.ZooDefs.Ids
-import java.util.LinkedHashMap
-import org.fusesource.fabric.zookeeper.IZKClient
-
-/**
- * <p>
- * </p>
- *
- * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
- */
-object ZooKeeperGroupFactory {
-
-  def create(zk: IZKClient, path: String):Group = new ZooKeeperGroup(zk, path)
-  def members(zk: IZKClient, path: String):LinkedHashMap[String, Array[Byte]] = ZooKeeperGroup.members(zk, path)
-}
+import org.fusesource.fabric.groups.{ChangeListener, Group}
 
 /**
  * <p>
@@ -46,7 +30,7 @@ object ZooKeeperGroupFactory {
  *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
-trait Group {
+trait BaseGroup extends Group {
 
   /**
    * Adds a member to the group with some associated data.
@@ -56,12 +40,12 @@ trait Group {
   /**
    * Updates the data associated with joined member.
    */
-  def update(id:String, data:Array[Byte]):Unit
+  def update(id:String, data:Array[Byte])
 
   /**
    * Removes a previously added member.
    */
-  def leave(id:String):Unit
+  def leave(id:String)
 
   /**
    * Lists all the members currently in the group.
@@ -86,7 +70,7 @@ trait Group {
    * Whe the Group is closed, any memberships registered via this
    * Group will be removed from the group.
    */
-  def close:Unit
+  def close()
 
   /**
    * Are we connected with the cluster?
@@ -94,17 +78,4 @@ trait Group {
   def connected:Boolean
 }
 
-/**
- * <p>
- *   Callback interface used to get notifications of changes
- *   to a cluster group.
- * </p>
- *
- * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
- */
-trait ChangeListener {
-  def changed:Unit
-  def connected:Unit
-  def disconnected:Unit
-}
 

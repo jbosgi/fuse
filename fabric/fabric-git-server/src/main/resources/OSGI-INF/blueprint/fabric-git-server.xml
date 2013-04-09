@@ -17,8 +17,6 @@
 <blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
            xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0">
 
-    <reference id="zookeeper" interface="org.fusesource.fabric.zookeeper.IZKClient"/>
-
     <cm:property-placeholder id="git" persistent-id="org.fusesource.fabric.git.server"
                              placeholder-prefix="${" placeholder-suffix="}" update-strategy="reload">
         <cm:default-properties>
@@ -27,13 +25,18 @@
         </cm:default-properties>
     </cm:property-placeholder>
 
+    <reference id="groupFactory" interface="org.fusesource.fabric.groups.GroupFactory"/>
+
+    <reference id="fabricService" interface="org.fusesource.fabric.api.FabricService"/>
+
     <bean id="gitServlet" class="org.eclipse.jgit.http.server.GitServlet" />
 
     <bean id="registrationHandler" class="org.fusesource.fabric.git.http.GitHttpServerRegistrationHandler"
           init-method="init" destroy-method="destroy">
         <property name="gitServlet" ref="gitServlet"/>
         <property name="configurationAdmin" ref="configurationAdmin"/>
-        <property name="zookeeper" ref="zookeeper"/>
+        <property name="fabricService" ref="fabricService"/>
+        <property name="groupFactory" ref="groupFactory"/>
         <property name="realm" value="${realm}"/>
         <property name="role" value="${role}"/>
     </bean>
@@ -44,11 +47,6 @@
         <reference-listener ref="registrationHandler" bind-method="bindHttpService" unbind-method="unbindHttpService"/>
     </reference>
 
-    <service ref="registrationHandler">
-        <interfaces>
-            <value>org.linkedin.zookeeper.client.LifecycleListener</value>
-            <value>org.osgi.service.cm.ConfigurationListener</value>
-        </interfaces>
-    </service>
+    <service ref="registrationHandler" interface="org.osgi.service.cm.ConfigurationListener"/>
 
 </blueprint>

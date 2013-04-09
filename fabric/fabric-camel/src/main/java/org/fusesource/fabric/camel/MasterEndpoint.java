@@ -23,9 +23,10 @@ import org.apache.camel.Producer;
 import org.apache.camel.impl.DefaultEndpoint;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.fusesource.fabric.groups.ClusteredSingleton;
+import org.fusesource.fabric.groups.Singleton;
+import org.fusesource.fabric.groups.internal.ClusteredSingleton;
 import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.TextNodeState;
+import org.fusesource.fabric.groups.internal.TextNodeState;
 
 /**
  * Represents an endpoint which only becomes active when it obtains the master lock
@@ -37,7 +38,7 @@ public class MasterEndpoint extends DefaultEndpoint {
     private final String singletonId;
     private final Group group;
     private final String child;
-    private final ClusteredSingleton<TextNodeState> cluster;
+    private final Singleton<CamelNodeState> cluster;
 
 
     public MasterEndpoint(String uri, MasterComponent component, String singletonId, Group group, String child) {
@@ -46,7 +47,7 @@ public class MasterEndpoint extends DefaultEndpoint {
         this.singletonId = singletonId;
         this.group = group;
         this.child = child;
-        this.cluster = new ClusteredSingleton<TextNodeState>(TextNodeState.class);
+        this.cluster = group.createSingleton(CamelNodeState.class);
     }
 
     @Override
@@ -90,7 +91,7 @@ public class MasterEndpoint extends DefaultEndpoint {
         return group;
     }
 
-    public ClusteredSingleton<TextNodeState> getCluster() {
+    public Singleton<CamelNodeState> getCluster() {
         return cluster;
     }
 

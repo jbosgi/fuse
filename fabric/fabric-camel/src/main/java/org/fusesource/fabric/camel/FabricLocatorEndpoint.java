@@ -29,6 +29,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.fusesource.fabric.groups.ChangeListener;
 import org.fusesource.fabric.groups.Group;
+import org.fusesource.fabric.groups.Member;
+import org.fusesource.fabric.groups.Singleton;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
@@ -44,6 +46,7 @@ public class FabricLocatorEndpoint extends DefaultEndpoint {
 
     private final FabricComponent component;
     private final Group group;
+    private final Member<CamelNodeState> member;
 
     private LoadBalancerFactory loadBalancerFactory;
     private LoadBalancer loadBalancer;
@@ -54,6 +57,7 @@ public class FabricLocatorEndpoint extends DefaultEndpoint {
         super(uri, component);
         this.component = component;
         this.group = group;
+        this.member = group.createMember(CamelNodeState.class);
     }
 
     @SuppressWarnings("unchecked")
@@ -80,28 +84,25 @@ public class FabricLocatorEndpoint extends DefaultEndpoint {
         if (loadBalancer == null) {
             loadBalancer = createLoadBalancer();
         }
-        group.add(new ChangeListener() {
+        member.add(new ChangeListener() {
             public synchronized void changed() {
                 //Find what has been removed.
                 Set<String> removed = new LinkedHashSet<String>();
 
                 for (Map.Entry<String, Processor> entry : processors.entrySet()) {
                     String key = entry.getKey();
-                    if (!group.members().containsKey(key)) {
+                    if (!member.members().containsKey(key)) {
                         removed.add(key);
                     }
                 }
 
                 //Add existing processors
-                for (Map.Entry<String,byte[]> entry : group.members().entrySet()) {
-                    try {
-                        String key = entry.getKey();
-                        if (!processors.containsKey(key)) {
-                            Processor p = getProcessor(new String(entry.getValue(), "UTF-8"));
-                            processors.put(key, p);
-                            loadBalancer.addProcessor(p);
-                        }
-                    } catch (UnsupportedEncodingException ignore) {
+                for (Map.Entry<String, CamelNodeState> entry : member.members().entrySet()) {
+                    String key = entry.getKey();
+                    if (!processors.containsKey(key)) {
+                        Processor p = getProcessor(entry.getValue().processor);
+                        processors.put(key, p);
+                        loadBalancer.addProcessor(p);
                     }
                 }
 

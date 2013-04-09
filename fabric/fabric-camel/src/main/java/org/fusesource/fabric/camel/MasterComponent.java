@@ -20,7 +20,7 @@ import org.apache.camel.Endpoint;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.URISupport;
 import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory;
 
 import java.util.Map;
 
@@ -30,7 +30,7 @@ import java.util.Map;
  * taking over to provide high availability of a single consumer.
  */
 public class MasterComponent extends ZKComponentSupport {
-    private String zkRoot = "/fabric/registry/camel/master";
+    private String zkRoot = "camel/master";
 
     public String getZkRoot() {
         return zkRoot;
@@ -59,7 +59,7 @@ public class MasterComponent extends ZKComponentSupport {
             childUri = childUri + "?" + URISupport.createQueryString(params);
         }
 
-        Group group = ZooKeeperGroupFactory.create(getZkClient(), fabricPath);
+        Group group = new ZooKeeperGroupFactory(getZkClient()).createGroup(fabricPath);
         return new MasterEndpoint(uri, this, name, group, childUri);
     }
 

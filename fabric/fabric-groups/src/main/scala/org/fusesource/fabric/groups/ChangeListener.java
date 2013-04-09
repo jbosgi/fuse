@@ -14,16 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.cxf;
+package org.fusesource.fabric.groups;
 
-import org.fusesource.fabric.groups.Member;
-import org.fusesource.fabric.groups.Singleton;
+/**
+ * <p>
+ *   Callback interface used to get notifications of changes
+ *   to a cluster group.
+ * </p>
+ *
+ * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+ */
+public interface ChangeListener {
 
-import java.util.List;
+    void changed();
 
-public interface LoadBalanceStrategy {
-    void setMember(Member<CxfNodeState> member);
-    Member<CxfNodeState> getMember();
-    List<String> getAlternateAddressList();
-    String getNextAlternateAddress();
+    void connected();
+
+    void disconnected();
+
 }

@@ -14,16 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.cxf;
+package org.fusesource.fabric.groups;
 
-import org.fusesource.fabric.groups.Member;
-import org.fusesource.fabric.groups.Singleton;
+/**
+ * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+ */
+public interface NodeState {
 
-import java.util.List;
+    /**
+     * The id of the cluster node.  There can be multiple node with this ID,
+     * but only the first node in the cluster will be the master for for it.
+     */
+    String id();
 
-public interface LoadBalanceStrategy {
-    void setMember(Member<CxfNodeState> member);
-    Member<CxfNodeState> getMember();
-    List<String> getAlternateAddressList();
-    String getNextAlternateAddress();
 }

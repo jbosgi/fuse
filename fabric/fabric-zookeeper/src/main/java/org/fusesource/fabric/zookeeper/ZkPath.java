@@ -57,6 +57,9 @@ public enum ZkPath {
 	CONFIG_ENSEMBLE_PROFILE        ("/fabric/configs/ensemble/profiles/{profile}"),
 
     MAVEN_PROXY                    ("/fabric/registry/maven/proxy/{type}"),
+
+    CLUSTERS                       ("/fabric/registry/clusters"),
+    CLUSTER                        ("/fabric/registry/clusters/{cluster}"),
 	GIT                            ("/fabric/registry/clusters/git"),
 
     // Agent nodes

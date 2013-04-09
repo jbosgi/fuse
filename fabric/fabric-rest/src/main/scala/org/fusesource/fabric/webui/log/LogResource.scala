@@ -19,13 +19,13 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import javax.servlet.ServletContext
 import javax.ws.rs._
 import core.{MediaType, Response, Context}
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory
 import java.net.{URI, HttpURLConnection, URL}
 import org.fusesource.fabric.webui.{BaseResource, Services}
 import org.fusesource.fabric.webui.{BaseResource, Services}
 import java.io._
 import scala.Array._
 import org.apache.zookeeper.KeeperException.NoNodeException
+import org.fusesource.fabric.groups.internal.ZooKeeperGroupFactory
 
 @Path("/log")
 class LogResource extends BaseResource {

@@ -16,6 +16,7 @@
  */
 package org.fusesource.fabric.groups
 
+import internal.{ZooKeeperGroupFactory, BaseGroup}
 import org.scalatest.matchers.ShouldMatchers
 import org.apache.zookeeper.server.{ZooKeeperServer, NIOServerCnxnFactory}
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog
@@ -144,8 +145,8 @@ class GroupsTest extends ZooKeeperFunSuiteSupport with ShouldMatchers {
 
   test("cluster events") {
 
-    val cluster1 = ZooKeeperGroupFactory.create(create_zk_client, "/example")
-    val cluster2 = ZooKeeperGroupFactory.create(create_zk_client, "/example")
+    val cluster1 = ZooKeeperGroupFactory.create(create_zk_client, "/example").asInstanceOf[BaseGroup]
+    val cluster2 = ZooKeeperGroupFactory.create(create_zk_client, "/example").asInstanceOf[BaseGroup]
     import TimeUnit._
 
     val c1id1 = cluster1.join("1".getBytes)

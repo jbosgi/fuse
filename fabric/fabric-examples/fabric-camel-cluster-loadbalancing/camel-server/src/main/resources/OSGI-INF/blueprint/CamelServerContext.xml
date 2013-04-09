@@ -22,7 +22,11 @@
            http://www.osgi.org/xmlns/blueprint/v1.0.0 http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
 
     <!-- osgi blueprint property placeholder -->
-    <cm:property-placeholder id="myConfig" persistent-id="org.fusesource.fabric.examples.camel.loadbalancing.server"/>
+    <cm:property-placeholder id="myConfig" persistent-id="org.fusesource.fabric.examples.camel.loadbalancing.server">
+        <cm:default-properties>
+            <cm:property name="portNumber" value="0"/>
+        </cm:default-properties>
+    </cm:property-placeholder>
 
     <reference id="zooKeeper" interface="org.fusesource.fabric.zookeeper.IZKClient"/>
 

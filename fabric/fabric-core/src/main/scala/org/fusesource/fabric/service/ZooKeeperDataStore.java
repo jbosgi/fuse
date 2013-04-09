@@ -197,7 +197,7 @@ public class ZooKeeperDataStore implements DataStore {
             } else if (options.getResolver() != null) {
                 // Use the resolver specified in the options and do nothing.
             } else if (zk.exists(ZkPath.POLICIES.getPath(ZkDefs.RESOLVER)) != null) {
-                // If there is a globlal resolver specified use it.
+                // If there is a global resolver specified use it.
                 options.setResolver(zk.getStringData(ZkPath.POLICIES.getPath(ZkDefs.RESOLVER)));
             } else {
                 // Fallback to the default resolver
@@ -219,6 +219,8 @@ public class ZooKeeperDataStore implements DataStore {
             byte[] decoded = Base64Encoder.decode(encoded);
             ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(decoded));
             return (CreateContainerMetadata) ois.readObject();
+        } catch (KeeperException.NoNodeException e) {
+            return null;
         } catch (Exception e) {
             throw new FabricException(e);
         }

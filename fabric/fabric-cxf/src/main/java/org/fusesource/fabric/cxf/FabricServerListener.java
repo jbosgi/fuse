@@ -20,21 +20,21 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.endpoint.ServerLifeCycleListener;
-import org.fusesource.fabric.groups.Group;
+import org.fusesource.fabric.groups.Member;
+import org.fusesource.fabric.groups.Singleton;
 
 public class FabricServerListener implements ServerLifeCycleListener {
     private static final transient Log LOG = LogFactory.getLog(FabricServerListener.class);
-    private final Group group;
-    private String eid;
+    private final Member<CxfNodeState> member;
     private ServerAddressResolver addressResolver;
 
-    public FabricServerListener(Group group, ServerAddressResolver addressResolver) {
-        this.group = group;
+    public FabricServerListener(Member<CxfNodeState> member, ServerAddressResolver addressResolver) {
+        this.member = member;
         this.addressResolver = addressResolver;
     }
 
-    public FabricServerListener(Group group) {
-        this(group, null);
+    public FabricServerListener(Member<CxfNodeState> member) {
+        this(member, null);
     }
 
     public void startServer(Server server) {
@@ -44,7 +44,11 @@ public class FabricServerListener implements ServerLifeCycleListener {
             LOG.debug("The CXF server is start with address " + address);
         }
         try {
-            eid = group.join(address.getBytes("UTF-8"));
+            CxfNodeState ep = new CxfNodeState();
+            ep.id = server.getEndpoint().getEndpointInfo().getName().toString();
+            ep.agent = System.getProperty("karaf.name");
+            ep.url = address;
+            member.join(ep);
         } catch (Exception ex) {
             LOG.warn("Cannot bind the address " + address + " to the group, due to ", ex);
         }
@@ -56,7 +60,7 @@ public class FabricServerListener implements ServerLifeCycleListener {
         if (LOG.isDebugEnabled()) {
             LOG.debug("The CXF server is stopped with address " + address);
         }
-        group.leave(eid);
+        member.leave();
     }
 
     public String getFullAddress(String address) {

@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.DeserializationContext;
 import org.codehaus.jackson.map.JsonDeserializer;
 import org.codehaus.jackson.map.JsonSerializer;
@@ -59,17 +58,15 @@ import org.elasticsearch.node.settings.NodeSettingsService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
+import org.fusesource.fabric.groups.GroupFactory;
+import org.fusesource.fabric.groups.Singleton;
 import org.fusesource.fabric.groups.Group;
 import org.fusesource.fabric.groups.NodeState;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
-import scala.collection.JavaConversions$;
 
 import static org.elasticsearch.cluster.ClusterState.newClusterStateBuilder;
 import static org.elasticsearch.cluster.node.DiscoveryNodes.newNodesBuilder;
@@ -77,7 +74,7 @@ import static org.elasticsearch.cluster.node.DiscoveryNodes.newNodesBuilder;
 public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
         implements Discovery,
                    DiscoveryNodesProvider,
-                   ServiceTrackerCustomizer,
+                   ServiceTrackerCustomizer<GroupFactory, GroupFactory>,
                    PublishClusterStateAction.NewClusterStateListener,
                    ChangeListener {
 
@@ -97,7 +94,7 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
     private volatile DiscoveryNodes latestDiscoNodes;
     private final PublishClusterStateAction publishClusterState;
     private volatile Group group;
-    private final ClusteredSingleton<ESNode> singleton;
+    private Singleton<ESNode> singleton;
     private final AtomicBoolean initialStateSent = new AtomicBoolean();
     private boolean joined;
 
@@ -118,9 +115,7 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
         this.discoveryNodeService = discoveryNodeService;
         this.publishClusterState = new PublishClusterStateAction(settings, transportService, this, this);
         this.context = FrameworkUtil.getBundle(getClass()).getBundleContext();
-        this.tracker = new ServiceTracker(context, IZKClient.class.getName(), this);
-        this.singleton = new ClusteredSingleton<ESNode>(ESNode.class);
-        this.singleton.add(this);
+        this.tracker = new ServiceTracker<GroupFactory, GroupFactory>(context, GroupFactory.class.getName(), this);
     }
 
     @Override
@@ -214,22 +209,24 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
 
 
     @Override
-    public Object addingService(ServiceReference reference) {
-        IZKClient zk = (IZKClient) context.getService(reference);
-        group = ZooKeeperGroupFactory.create(zk, "/fabric/registry/clusters/elasticsearch/" + clusterName.value());
+    public GroupFactory addingService(ServiceReference<GroupFactory> reference) {
+        GroupFactory gf = context.getService(reference);
+        group = gf.createGroup("elasticsearch/" + clusterName.value());
+        singleton = gf.createSingleton(ESNode.class);
+        singleton.add(this);
         joined = false;
         singleton.start(group);
         joined = true;
         singleton.join(new ESNode(clusterName.value(), localNode, false));
-        return zk;
+        return gf;
     }
 
     @Override
-    public void modifiedService(ServiceReference reference, Object service) {
+    public void modifiedService(ServiceReference<GroupFactory> reference, GroupFactory service) {
     }
 
     @Override
-    public void removedService(ServiceReference reference, Object service) {
+    public void removedService(ServiceReference<GroupFactory> reference, GroupFactory service) {
         context.ungetService(reference);
         group.close();
     }
@@ -261,9 +258,9 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
                     // Rebuild nodes
                     DiscoveryNodes.Builder nodesBuilder = newNodesBuilder()
                             .localNodeId(localNode.id())
-                            .masterNodeId(singleton.master().get().node().id())
-                            .put(singleton.master().get().node);
-                    for (ESNode node : JavaConversions$.MODULE$.<ESNode>asJavaCollection(singleton.slaves())) {
+                            .masterNodeId(singleton.master().node().id())
+                            .put(singleton.master().node);
+                    for (ESNode node : singleton.slaves()) {
                         nodesBuilder.put(node.node());
                     }
                     latestDiscoNodes = nodesBuilder.build();
@@ -286,8 +283,8 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
                     sendInitialStateEventIfNeeded();
                 }
             });
-        } else if (joined && singleton.master().isDefined()) {
-            DiscoveryNode masterNode = singleton.master().get().node();
+        } else if (joined && singleton.master() != null) {
+            DiscoveryNode masterNode = singleton.master().node();
             try {
                 // first, make sure we can connect to the master
                 transportService.connectToNode(masterNode);
@@ -392,7 +389,7 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
 
     static class NodeSerializer extends JsonSerializer<ESNode> {
         @Override
-        public void serialize(ESNode value, JsonGenerator jgen, SerializerProvider provider) throws IOException, JsonProcessingException {
+        public void serialize(ESNode value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
             jgen.writeStartObject();
             jgen.writeStringField("id", value.id());
             jgen.writeStringField("agent", System.getProperty("karaf.name"));
@@ -418,7 +415,7 @@ public class FabricDiscovery extends AbstractLifecycleComponent<Discovery>
 
     static class NodeDeserializer extends JsonDeserializer<ESNode> {
         @Override
-        public ESNode deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+        public ESNode deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
             try {
                 Map map = jp.readValueAs(Map.class);
                 String id = map.get("id").toString();

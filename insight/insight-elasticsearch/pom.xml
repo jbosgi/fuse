@@ -56,14 +56,6 @@
           <artifactId>fabric-groups</artifactId>
       </dependency>
       <dependency>
-          <groupId>org.fusesource.fabric</groupId>
-          <artifactId>fabric-linkedin-zookeeper</artifactId>
-      </dependency>
-      <dependency>
-          <groupId>org.fusesource.fabric</groupId>
-          <artifactId>fabric-zookeeper</artifactId>
-      </dependency>
-      <dependency>
           <groupId>org.fusesource.insight</groupId>
           <artifactId>insight-storage</artifactId>
       </dependency>

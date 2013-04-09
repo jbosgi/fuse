@@ -22,8 +22,9 @@ import org.apache.camel.SuspendableService;
 import org.apache.camel.impl.DefaultConsumer;
 import org.apache.camel.util.ServiceHelper;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
-import org.fusesource.fabric.groups.TextNodeState;
+import org.fusesource.fabric.groups.Singleton;
+import org.fusesource.fabric.groups.internal.ClusteredSingleton;
+import org.fusesource.fabric.groups.internal.TextNodeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,11 +101,11 @@ public class MasterConsumer extends DefaultConsumer {
     }
 
     protected void tryAcquireLock() {
-        final ClusteredSingleton<TextNodeState> cluster = getCluster();
-        TextNodeState state = new TextNodeState();
+        final Singleton<CamelNodeState> cluster = getCluster();
+        CamelNodeState state = new CamelNodeState();
         String singletonId = endpoint.getSingletonId();
         LOG.debug("Attempting to become master for endpoint: " + endpoint + " in " + endpoint.getCamelContext() + " with singletonID: " + singletonId);
-        state.setId(singletonId);
+        state.id = singletonId;
         cluster.join(state);
         cluster.add(new ChangeListener() {
             @Override
@@ -138,7 +139,7 @@ public class MasterConsumer extends DefaultConsumer {
         });
     }
 
-    protected ClusteredSingleton<TextNodeState> getCluster() {
+    protected Singleton<CamelNodeState> getCluster() {
         return endpoint.getCluster();
     }
 

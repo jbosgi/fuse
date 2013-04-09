@@ -23,40 +23,41 @@ import org.eclipse.jgit.lib.StoredConfig;
 import org.fusesource.fabric.git.FabricGitService;
 import org.fusesource.fabric.git.GitNode;
 import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
-import org.fusesource.fabric.groups.ClusteredSingletonWatcher;
+import org.fusesource.fabric.groups.GroupFactory;
+import org.fusesource.fabric.groups.Singleton;
 import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
 import org.fusesource.fabric.utils.Files;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
-import org.linkedin.zookeeper.client.LifecycleListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.List;
+import java.util.Map;
 
-public class FabricGitServiceImpl implements FabricGitService, LifecycleListener, ChangeListener {
+public class FabricGitServiceImpl implements FabricGitService, ChangeListener {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FabricGitServiceImpl.class);
 
+    private GroupFactory groupFactory;
 	private Group group;
-	private IZKClient zookeeper;
-	ClusteredSingletonWatcher<GitNode> watcher = new ClusteredSingletonWatcher<GitNode>(GitNode.class);
+	private Singleton<GitNode> watcher;
 
 
-	public IZKClient getZookeeper() {
-		return zookeeper;
-	}
+    public GroupFactory getGroupFactory() {
+        return groupFactory;
+    }
 
-	public void setZookeeper(IZKClient zookeeper) {
-		this.zookeeper = zookeeper;
-	}
+    public void setGroupFactory(GroupFactory groupFactory) {
+        this.groupFactory = groupFactory;
+    }
 
     public void init() {
+        group = groupFactory.createGroup("git");
+        watcher = groupFactory.createSingleton(GitNode.class);
+        watcher.start(group);
+        group.add(this);
     }
 
     public void destroy() {
@@ -89,13 +90,13 @@ public class FabricGitServiceImpl implements FabricGitService, LifecycleListener
 
 	@Override
 	public void changed() {
-		GitNode[] masters = watcher.masters();
-		if (masters == null || masters.length == 0) {
+		Map<String, GitNode> members = watcher.members();
+		if (members == null || members.isEmpty()) {
 			return;
 		}
 		try {
 			StoredConfig config = get().getRepository().getConfig();
-			config.setString("remote", "origin", "url", ZooKeeperUtils.getSubstitutedData(zookeeper,masters[0].getUrl()));
+			config.setString("remote", "origin", "url", members.values().iterator().next().getUrl());
 			config.save();
 		} catch (Exception e) {
 			LOGGER.error("Failed to point origin to the new master.", e);
@@ -112,15 +113,4 @@ public class FabricGitServiceImpl implements FabricGitService, LifecycleListener
 		changed();
 	}
 
-	@Override
-	public void onConnected() {
-		group = ZooKeeperGroupFactory.create(zookeeper, ZkPath.GIT.getPath());
-		group.add(this);
-		watcher.start(group);
-	}
-
-	@Override
-	public void onDisconnected() {
-		group.close();
-	}
 }
