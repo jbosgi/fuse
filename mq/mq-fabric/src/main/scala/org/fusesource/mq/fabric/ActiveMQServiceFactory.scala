@@ -41,10 +41,10 @@ import java.lang.{ThreadLocal, Thread}
 import org.apache.activemq.ActiveMQConnectionFactory
 import org.osgi.framework.{ServiceRegistration, BundleContext}
 import org.apache.activemq.network.DiscoveryNetworkConnector
+import org.fusesource.mq.fabric.BrokerLoader.EmbeddedBroker
 
 object ActiveMQServiceFactory {
   final val LOG= LoggerFactory.getLogger(classOf[ActiveMQServiceFactory])
-  final val CONFIG_PROPERTIES = new ThreadLocal[Properties]()
 
   PropertyEditorManager.registerEditor(classOf[URI], classOf[URIEditor])
 
@@ -76,6 +76,8 @@ object ActiveMQServiceFactory {
   }
 
   def createBroker(uri: String, properties:Properties) = {
+    BrokerLoader.createBroker(uri, properties)
+    /*
     CONFIG_PROPERTIES.set(properties)
     try {
       Thread.currentThread.setContextClassLoader(classOf[BrokerService].getClassLoader)
@@ -101,14 +103,9 @@ object ActiveMQServiceFactory {
     } finally {
       CONFIG_PROPERTIES.remove()
     }
+    */
   }
 
-}
-
-class ConfigurationProperties extends FactoryBean[Properties] {
-  def getObject = new Properties(ActiveMQServiceFactory.CONFIG_PROPERTIES.get())
-  def getObjectType = classOf[Properties]
-  def isSingleton = false
 }
 
 class ActiveMQServiceFactory extends ManagedServiceFactory {
@@ -200,7 +197,7 @@ class ActiveMQServiceFactory extends ManagedServiceFactory {
     @volatile
     var start_thread:Thread = _
     @volatile
-    var server:(ResourceXmlApplicationContext, BrokerService, Resource) = _
+    var server:EmbeddedBroker = _
 
     var cfServiceRegistration:ServiceRegistration[_] = null
 
@@ -303,13 +300,13 @@ class ActiveMQServiceFactory extends ManagedServiceFactory {
             try {
               // ok boot up the server..
               server = createBroker(config, properties)
-              configure_ports(server._2, properties)
-              server._2.start()
+              configure_ports(server.broker(), properties)
+              server.broker().start()
               info("Broker %s has started.", name)
 
               // Update the advertised endpoint URIs that clients can use.
               if (!standalone) discoveryAgent.setServices( connectors.flatMap { name=>
-                val connector = server._2.getConnectorByName(name)
+                val connector = server.broker().getConnectorByName(name)
                 if ( connector==null ) {
                   warn("ActiveMQ broker '%s' does not have a connector called '%s'", name, name)
                   None
@@ -318,19 +315,19 @@ class ActiveMQServiceFactory extends ManagedServiceFactory {
                 }
               })
 
-              if (registerService) osgiRegister(server._2)
+              if (registerService) osgiRegister(server.broker())
             } catch {
               case e:Throwable =>
                 info("Broker %s failed to start.  Will try again in 10 seconds", name)
                 LOG.info("Exception on start: " + e, e)
-                Thread.sleep(1000*10);
                 start_failure = e
+                Thread.sleep(1000*10)
             } finally {
               if(started.get && start_failure!=null && !isInterrupted){
                 trystartup
               } else {
                 start_thread = null
-                last_modified = server._3.lastModified()
+                last_modified = if (server != null) server.lastModified() else 0
               }
             }
           }
@@ -345,16 +342,16 @@ class ActiveMQServiceFactory extends ManagedServiceFactory {
         val s = server // working with a volatile
         if( s!=null ) {
           try {
-            s._2.stop()
-            s._2.waitUntilStopped()
+            s.broker().stop()
+            s.broker().waitUntilStopped()
             if (registerService) {
-              osgiUnregister(s._2)
+              osgiUnregister(s.broker())
             }
           } catch {
             case e:Throwable => LOG.debug("Exception on stop: " + e,  e)
           }
           try {
-            s._1.close()
+            s.close()
           } catch {
             case e:Throwable => LOG.debug("Exception on close: " + e,  e)
           }
@@ -397,8 +394,8 @@ class ActiveMQServiceFactory extends ManagedServiceFactory {
     override def run() {
       while (running) {
         configurations.values.foreach(c => {
-          if (c.last_modified != -1 && c.server._3.lastModified() != c.last_modified) {
-            c.last_modified = c.server._3.lastModified()
+          if (c.last_modified != -1 && c.server.lastModified() != c.last_modified) {
+            c.last_modified = c.server.lastModified()
             info("updating " + c.properties)
             updated(c.properties.get("service.pid").asInstanceOf[String], c.properties.asInstanceOf[Dictionary[java.lang.String, _]])
           }

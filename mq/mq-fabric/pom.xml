@@ -34,6 +34,21 @@
 
   <properties>
     <fuse.osgi.services.export>javax.jms.ConnectionFactory</fuse.osgi.services.export>
+    <fuse.osgi.private.pkg>
+        org.apache.aries.blueprint.*,
+        org.apache.xbean.blueprint.context.impl
+    </fuse.osgi.private.pkg>
+      <fuse.osgi.import.pkg>
+          !org.osgi.service.event,
+          !org.apache.aries.quiesce.participant,
+          !org.apache.aries.quiesce.manager,
+          !org.apache.aries.blueprint*,
+          org.springframework*;resolution:=optional,
+          *
+      </fuse.osgi.import.pkg>
+      <fuse.osgi.embed.dependency>
+          org.apache.aries.blueprint:org.apache.aries.blueprint.blueprint-noosgi
+      </fuse.osgi.embed.dependency>
   </properties>
 
   <dependencies>
@@ -92,6 +107,19 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
     </dependency>
+
+      <dependency>
+          <groupId>org.apache.aries.blueprint</groupId>
+          <artifactId>org.apache.aries.blueprint.noosgi</artifactId>
+          <version>1.0.0-SNAPSHOT</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.activemq</groupId>
+          <artifactId>activemq-blueprint</artifactId>
+          <version>${activemq-version}</version>
+          <scope>provided</scope>
+      </dependency>
 
   </dependencies>
 
