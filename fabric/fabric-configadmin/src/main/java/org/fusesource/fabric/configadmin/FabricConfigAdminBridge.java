@@ -16,6 +16,7 @@
  */
 package org.fusesource.fabric.configadmin;
 
+import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
 import org.osgi.service.cm.Configuration;
@@ -73,7 +74,8 @@ public class FabricConfigAdminBridge implements Runnable {
 
     protected void update() {
         try {
-            Profile profile = fabricService.getCurrentContainer().getOverlayProfile();
+            Container container = fabricService.getCurrentContainer();
+            Profile profile = container.getOverlayProfile();
             final Map<String, Map<String, String>> pidProperties = profile.getConfigurations();
             List<Configuration> configs = asList(getConfigAdmin().listConfigurations("(" + FABRIC_ZOOKEEPER_PID + "=*)"));
             for (String pid : pidProperties.keySet()) {

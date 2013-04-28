@@ -16,19 +16,20 @@
  */
 package org.fusesource.fabric.service;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.fusesource.fabric.api.FabricException;
 import org.fusesource.fabric.api.PlaceholderResolver;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.jasypt.encryption.pbe.PBEStringEncryptor;
 import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 
-import static org.fusesource.fabric.zookeeper.ZkPath.AUTHENTICATION_CRYPT_PASSWORD;
 import static org.fusesource.fabric.zookeeper.ZkPath.AUTHENTICATION_CRYPT_ALGORITHM;
+import static org.fusesource.fabric.zookeeper.ZkPath.AUTHENTICATION_CRYPT_PASSWORD;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.get;
 
 public class EncryptedPropertyResolver implements PlaceholderResolver {
 
     private static final String CRYPT_SCHEME = "crypt";;
-    private IZKClient zooKeeper;
+    private CuratorFramework curator;
 
     @Override
     public String getScheme() {
@@ -49,7 +50,7 @@ public class EncryptedPropertyResolver implements PlaceholderResolver {
 
     private String getAlgorithm() {
         try {
-            return zooKeeper.getStringData(AUTHENTICATION_CRYPT_ALGORITHM.getPath());
+            return get(curator, AUTHENTICATION_CRYPT_ALGORITHM.getPath());
         } catch (Exception e) {
             throw new FabricException(e);
         }
@@ -57,17 +58,17 @@ public class EncryptedPropertyResolver implements PlaceholderResolver {
 
     private String getPassword() {
         try {
-            return zooKeeper.getStringData(AUTHENTICATION_CRYPT_PASSWORD.getPath());
+            return get(curator, AUTHENTICATION_CRYPT_PASSWORD.getPath());
         } catch (Exception e) {
             throw new FabricException(e);
         }
     }
 
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

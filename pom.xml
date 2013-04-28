@@ -128,6 +128,7 @@
         <commons-lang-version>2.6</commons-lang-version>
         <common-math-version>2.2</common-math-version>
         <commons-pool-version>1.5.4_3</commons-pool-version>
+        <curator.version>2.0.1-SNAPSHOT</curator.version>
         <cxf-version>2.6.0.redhat-60${perfectus-build}</cxf-version>
         <depends-maven-plugin.version>1.2</depends-maven-plugin.version>
         <drools-version>5.5.0.Final</drools-version>
@@ -139,7 +140,7 @@
         <felix-configadmin-version>1.4.0.redhat-60${perfectus-build}</felix-configadmin-version>
         <felix-eventadmin-version>1.3.0.redhat-60${perfectus-build}</felix-eventadmin-version>
         <felix-fileinstall-version>3.3.11.redhat-60${perfectus-build}</felix-fileinstall-version>
-        <guava-version>13.0.1</guava-version>
+        <guava-version>14.0.1</guava-version>
         <guava.osgi.version.clean>13.0.1</guava.osgi.version.clean>
         <hadoop-version>1.0.3</hadoop-version>
         <hawtbuf-version>1.9</hawtbuf-version>

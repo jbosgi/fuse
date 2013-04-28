@@ -16,13 +16,17 @@
  */
 package org.fusesource.fabric.internal;
 
-import org.fusesource.fabric.api.*;
+import org.fusesource.fabric.api.Container;
+import org.fusesource.fabric.api.CreateContainerMetadata;
+import org.fusesource.fabric.api.DataStore;
+import org.fusesource.fabric.api.FabricException;
+import org.fusesource.fabric.api.Profile;
+import org.fusesource.fabric.api.Version;
 import org.fusesource.fabric.api.data.BundleInfo;
 import org.fusesource.fabric.api.data.ServiceInfo;
 import org.fusesource.fabric.service.ContainerTemplate;
 import org.fusesource.fabric.service.FabricServiceImpl;
 import org.fusesource.fabric.zookeeper.ZkDefs;
-import org.fusesource.fabric.zookeeper.ZkPath;
 import org.osgi.jmx.framework.BundleStateMBean;
 import org.osgi.jmx.framework.ServiceStateMBean;
 import org.slf4j.Logger;
@@ -30,7 +34,15 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.fusesource.fabric.zookeeper.ZkPath.CONFIG_ENSEMBLE;
+import static org.fusesource.fabric.zookeeper.ZkPath.CONFIG_ENSEMBLES;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.get;
 
 public class ContainerImpl implements Container {
 
@@ -72,8 +84,8 @@ public class ContainerImpl implements Container {
     public boolean isEnsembleServer() {
         // TODO: how to abstract the ensemble set up ?
         try {
-            String clusterId = service.getZooKeeper().getStringData(ZkPath.CONFIG_ENSEMBLES.getPath());
-            String containers = service.getZooKeeper().getStringData(ZkPath.CONFIG_ENSEMBLE.getPath(clusterId));
+            String clusterId = get(service.getCurator(), CONFIG_ENSEMBLES.getPath());
+            String containers = get(service.getCurator(), CONFIG_ENSEMBLE.getPath(clusterId));
             for (String name : containers.split(",")) {
                 if (id.equals(name)) {
                     return true;

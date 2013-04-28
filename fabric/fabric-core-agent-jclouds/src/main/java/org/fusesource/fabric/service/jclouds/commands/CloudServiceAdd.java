@@ -19,6 +19,7 @@ package org.fusesource.fabric.service.jclouds.commands;
 
 import java.util.Map;
 import com.google.common.base.Strings;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.fusesource.fabric.boot.commands.support.FabricCommand;
@@ -27,6 +28,8 @@ import org.jclouds.karaf.utils.EnvHelper;
 
 @Command(name = "cloud-service-add", scope = "fabric", description = "Registers a cloud provider with the fabric.")
 public class CloudServiceAdd extends FabricCommand {
+
+    private CuratorFramework curator;
 
     @Option(name = "--name", required = false, description = "The service context name. Used to distinct between multiple service of the same provider/api.")
     protected String contextName;
@@ -99,22 +102,22 @@ public class CloudServiceAdd extends FabricCommand {
         // Only Provider is specified.
         else if (!Strings.isNullOrEmpty(providerValue) && (Strings.isNullOrEmpty(apiValue) || Strings.isNullOrEmpty(endpointValue))) {
             serviceName = providerValue;
-            CloudUtils.registerProvider(getZooKeeper(), configurationAdmin, contextName, providerValue, identityValue, credentialValue, props);
+            CloudUtils.registerProvider(curator, configurationAdmin, contextName, providerValue, identityValue, credentialValue, props);
         }
         //Only Api specified
         else if (Strings.isNullOrEmpty(providerValue) && (!Strings.isNullOrEmpty(apiValue) && !Strings.isNullOrEmpty(endpointValue))) {
             serviceName = apiValue;
-            CloudUtils.registerApi(getZooKeeper(), configurationAdmin, contextName, apiValue, endpointValue, identityValue, credentialValue, props);
+            CloudUtils.registerApi(curator, configurationAdmin, contextName, apiValue, endpointValue, identityValue, credentialValue, props);
         }
         //Both are specified but Api is passed as an option, so it gains priority.
         else if (Strings.isNullOrEmpty(api)) {
             serviceName = apiValue;
-            CloudUtils.registerApi(getZooKeeper(), configurationAdmin, contextName, apiValue, endpointValue, identityValue, credentialValue, props);
+            CloudUtils.registerApi(curator, configurationAdmin, contextName, apiValue, endpointValue, identityValue, credentialValue, props);
         }
         //In all other cases we assume the user wants to use a provider.
         else {
             serviceName = providerValue;
-            CloudUtils.registerProvider(getZooKeeper(), configurationAdmin, contextName, providerValue, identityValue, credentialValue, props);
+            CloudUtils.registerProvider(curator, configurationAdmin, contextName, providerValue, identityValue, credentialValue, props);
         }
 
 
@@ -123,5 +126,13 @@ public class CloudServiceAdd extends FabricCommand {
             CloudUtils.waitForComputeService(bundleContext, contextName);
         }
         return null;
+    }
+
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

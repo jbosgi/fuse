@@ -44,7 +44,6 @@ import org.osgi.service.cm.ConfigurationAdmin;
 public class Join extends OsgiCommandSupport implements org.fusesource.fabric.boot.commands.service.Join {
 
     ConfigurationAdmin configurationAdmin;
-    private IZKClient zooKeeper;
     private String version = ZkDefs.DEFAULT_VERSION;
     private BundleContext bundleContext;
 
@@ -244,11 +243,6 @@ public class Join extends OsgiCommandSupport implements org.fusesource.fabric.bo
     @Override
     public void setConfigurationAdmin(ConfigurationAdmin configurationAdmin) {
         this.configurationAdmin = configurationAdmin;
-    }
-
-    @Override
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
     }
 
     @Override

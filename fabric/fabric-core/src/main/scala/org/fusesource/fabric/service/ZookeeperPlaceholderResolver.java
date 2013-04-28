@@ -16,20 +16,21 @@
  */
 package org.fusesource.fabric.service;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.fusesource.fabric.api.FabricException;
 import org.fusesource.fabric.api.PlaceholderResolver;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.utils.ZookeeperCommandBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.fusesource.fabric.zookeeper.ZkPath.loadURL;
 
 public class ZookeeperPlaceholderResolver implements PlaceholderResolver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperPlaceholderResolver.class);
     private static final String ZOOKEEPER_SCHEME = "zk";
 
-    private IZKClient zooKeeper;
+    private CuratorFramework curator;
 
     @Override
     public String getScheme() {
@@ -39,7 +40,7 @@ public class ZookeeperPlaceholderResolver implements PlaceholderResolver {
     @Override
     public String resolve(String pid, String key, String value) {
         try {
-            return new String(ZookeeperCommandBuilder.loadUrl(value).execute(zooKeeper), "UTF-8");
+            return new String(loadURL(curator, value), "UTF-8");
         } catch (KeeperException.NoNodeException e) {
             LOGGER.debug("Could not load property value: {}. Ignoring.", value, e);
             return value;
@@ -48,11 +49,11 @@ public class ZookeeperPlaceholderResolver implements PlaceholderResolver {
         }
     }
 
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

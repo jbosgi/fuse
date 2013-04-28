@@ -28,8 +28,6 @@ import org.fusesource.fabric.zookeeper.IZKClient;
 public class VersionCompleter implements Completer {
 
     protected FabricService fabricService;
-    protected IZKClient zooKeeper;
-
 
     @Override
     public int complete(String buffer, int cursor, List<String> candidates) {
@@ -47,13 +45,5 @@ public class VersionCompleter implements Completer {
 
     public void setFabricService(FabricService fabricService) {
         this.fabricService = fabricService;
-    }
-
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
-    }
-
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
     }
 }

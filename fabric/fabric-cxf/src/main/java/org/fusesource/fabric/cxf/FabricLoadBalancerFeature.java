@@ -18,6 +18,9 @@ package org.fusesource.fabric.cxf;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.cxf.Bus;
 import org.apache.cxf.buslifecycle.BusLifeCycleListener;
 import org.apache.cxf.buslifecycle.BusLifeCycleManager;
@@ -30,8 +33,6 @@ import org.apache.cxf.feature.AbstractFeature;
 import org.apache.cxf.interceptor.InterceptorProvider;
 import org.fusesource.fabric.groups.Group;
 import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.internal.ZKClient;
 import org.linkedin.util.clock.Timespan;
 
 
@@ -40,7 +41,7 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
     private static final String ZOOKEEPER_URL = "zookeeper.url";
     private static final String ZOOKEEPER_PASSWORD = "zookeeper.password";
 
-    private volatile IZKClient zkClient;
+    private volatile CuratorFramework curator;
 
     private String zooKeeperUrl;
     private String zooKeeperPassword;
@@ -131,14 +132,14 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
     
     public synchronized Group getGroup() throws Exception {
          if (group == null) {
-             group = ZooKeeperGroupFactory.create(getZkClient(), zkRoot + fabricPath);
+             group = ZooKeeperGroupFactory.create(curator, zkRoot + fabricPath);
          }
         return group;
     }
 
     public void destroy() throws Exception {
-        if (zkClient != null && isShouldCloseZkClient()) {
-            zkClient.close();
+        if (curator != null && shouldCloseCurator()) {
+            curator.close();
         }
     }
 
@@ -150,8 +151,8 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
         this.fabricPath = fabricPath;
     }
 
-    public synchronized IZKClient getZkClient() throws Exception {
-        if (zkClient == null) {
+    public synchronized CuratorFramework getCurator() throws Exception {
+        if (curator == null) {
             String connectString = getZooKeeperUrl();
             if (connectString == null) {
                 connectString = System.getProperty(ZOOKEEPER_URL, "localhost:2181");
@@ -161,27 +162,30 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
                 System.getProperty(ZOOKEEPER_PASSWORD);
             }
             LOG.debug("IZKClient not find in camel registry, creating new with connection " + connectString);
-            ZKClient client = new ZKClient(connectString, Timespan.milliseconds(getMaximumConnectionTimeout()), null);
+            CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder()
+                                                             .connectString(connectString)
+                                                             .retryPolicy(new ExponentialBackoffRetry(500, 5))
+                                                             .connectionTimeoutMs((int) getMaximumConnectionTimeout());
             if (password != null && !password.isEmpty()) {
-                client.setPassword(password);
+                builder = builder.authorization("digest",("fabric:"+password).getBytes("UTF-8"));
             }
-            zkClient = client;
+            curator = builder.build();
             setShouldCloseZkClient(true);
         }
 
         // ensure we are started
-        if (zkClient instanceof ZKClient) {
-            if (!zkClient.isConnected()) {
-                LOG.debug("Staring IZKClient " + zkClient);
-                ((ZKClient) zkClient).start();
+        if (curator instanceof CuratorFramework) {
+            if (!curator.getZookeeperClient().isConnected()) {
+                LOG.debug("Staring Curator " + curator);
+                curator.start();
             }
         }
-        zkClient.waitForConnected(new Timespan(getMaximumConnectionTimeout()));
-        return zkClient;
+        curator.getZookeeperClient().blockUntilConnectedOrTimedOut();
+        return curator;
     }
 
-    public void setZkClient(IZKClient zkClient) {
-        this.zkClient = zkClient;
+    public void setZkClient(CuratorFramework curator) {
+        this.curator = curator;
     }
 
     public LoadBalanceStrategy getLoadBalanceStrategy() throws Exception {
@@ -202,7 +206,7 @@ public class FabricLoadBalancerFeature extends AbstractFeature implements BusLif
          this.shouldCloseZkClient = closeZkClient;
     }
 
-    public boolean isShouldCloseZkClient() {
+    public boolean shouldCloseCurator() {
         return shouldCloseZkClient;
     }
 

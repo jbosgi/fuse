@@ -45,7 +45,6 @@ public class ContainerAwareProfileCompleter implements Completer {
     private final boolean unassigned;
 
     protected FabricService fabricService;
-    protected IZKClient zooKeeper;
 
     public ContainerAwareProfileCompleter(int containerArgumentIndex, boolean assigned, boolean unassigned) {
         this.containerArgumentIndex = containerArgumentIndex;
@@ -121,13 +120,5 @@ public class ContainerAwareProfileCompleter implements Completer {
 
     public void setFabricService(FabricService fabricService) {
         this.fabricService = fabricService;
-    }
-
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
-    }
-
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
     }
 }

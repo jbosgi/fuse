@@ -16,6 +16,7 @@
  */
 package org.fusesource.fabric.service;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.ContainerProvider;
 import org.fusesource.fabric.api.CreateContainerMetadata;
@@ -37,8 +38,7 @@ import org.fusesource.fabric.internal.ContainerImpl;
 import org.fusesource.fabric.internal.ProfileImpl;
 import org.fusesource.fabric.internal.VersionImpl;
 import org.fusesource.fabric.utils.SystemProperties;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
+import org.fusesource.fabric.zookeeper.utils.CuratorUtils;
 import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
@@ -56,6 +56,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.fusesource.fabric.zookeeper.ZkPath.MAVEN_PROXY;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.*;
+
 
 public class FabricServiceImpl implements FabricService {
 
@@ -64,7 +67,7 @@ public class FabricServiceImpl implements FabricService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FabricServiceImpl.class);
 
-    private IZKClient zooKeeper;
+    private CuratorFramework curator;
     private DataStore dataStore;
     private PortService portService;
     private Map<String, ContainerProvider> providers;
@@ -102,12 +105,12 @@ public class FabricServiceImpl implements FabricService {
         }
     }
 
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 
     public void setDataStore(DataStore dataStore) {
@@ -331,13 +334,14 @@ public class FabricServiceImpl implements FabricService {
     public URI getMavenRepoURI() {
         URI uri = URI.create(defaultRepo);
         try {
-            if (zooKeeper != null && zooKeeper.exists(ZkPath.MAVEN_PROXY.getPath("download")) != null) {
-                List<String> children = zooKeeper.getChildren(ZkPath.MAVEN_PROXY.getPath("download"));
+
+            if (curator != null && exists(curator, MAVEN_PROXY.getPath("download")) != null) {
+                List<String> children = curator.getChildren().forPath(MAVEN_PROXY.getPath("download"));
                 if (children != null && !children.isEmpty()) {
                     Collections.sort(children);
                 }
 
-                String mavenRepo = ZooKeeperUtils.getSubstitutedPath(zooKeeper, ZkPath.MAVEN_PROXY.getPath("download") + "/" + children.get(0));
+                String mavenRepo = getSubstitutedPath(curator, MAVEN_PROXY.getPath("download") + "/" + children.get(0));
                 if (mavenRepo != null && !mavenRepo.endsWith("/")) {
                     mavenRepo += "/";
                 }
@@ -353,14 +357,14 @@ public class FabricServiceImpl implements FabricService {
     public List<URI> getMavenRepoURIs() {
         try {
             List<URI> uris = new ArrayList<URI>();
-            if (zooKeeper != null && zooKeeper.exists(ZkPath.MAVEN_PROXY.getPath("download")) != null) {
-                List<String> children = zooKeeper.getChildren(ZkPath.MAVEN_PROXY.getPath("download"));
+            if (curator != null && exists(curator, MAVEN_PROXY.getPath("download")) != null) {
+                List<String> children = curator.getChildren().forPath(MAVEN_PROXY.getPath("download"));
                 if (children != null && !children.isEmpty()) {
                     Collections.sort(children);
                 }
                 if (children != null) {
                     for (String child : children) {
-                        String mavenRepo = ZooKeeperUtils.getSubstitutedPath(zooKeeper, ZkPath.MAVEN_PROXY.getPath("download") + "/" + child);
+                        String mavenRepo = getSubstitutedPath(curator, MAVEN_PROXY.getPath("download") + "/" + child);
                         if (mavenRepo != null && !mavenRepo.endsWith("/")) {
                             mavenRepo += "/";
                         }
@@ -378,13 +382,13 @@ public class FabricServiceImpl implements FabricService {
     public URI getMavenRepoUploadURI() {
         URI uri = URI.create(defaultRepo);
         try {
-            if (zooKeeper != null && zooKeeper.exists(ZkPath.MAVEN_PROXY.getPath("upload")) != null) {
-                List<String> children = zooKeeper.getChildren(ZkPath.MAVEN_PROXY.getPath("upload"));
+            if (curator != null && curator.checkExists().forPath(MAVEN_PROXY.getPath("upload")) != null) {
+                List<String> children = curator.getChildren().forPath(MAVEN_PROXY.getPath("upload"));
                 if (children != null && !children.isEmpty()) {
                     Collections.sort(children);
                 }
 
-                String mavenRepo = ZooKeeperUtils.getSubstitutedPath(zooKeeper, ZkPath.MAVEN_PROXY.getPath("upload") + "/" + children.get(0));
+                String mavenRepo = CuratorUtils.getSubstitutedPath(curator, MAVEN_PROXY.getPath("upload") + "/" + children.get(0));
                 if (mavenRepo != null && !mavenRepo.endsWith("/")) {
                     mavenRepo += "/";
                 }
@@ -429,7 +433,7 @@ public class FabricServiceImpl implements FabricService {
         //We are looking directly for at the zookeeper for the url, since container might not even be mananaged.
         //Also this is required for the integration with the IDE.
         try {
-            if (zooKeeper != null && zooKeeper.isConnected()) {
+            if (curator != null && curator.isStarted()) {
                 Version defaultVersion = getDefaultVersion();
                 if (defaultVersion != null) {
                     Profile profile = defaultVersion.getProfile("default");
@@ -438,7 +442,7 @@ public class FabricServiceImpl implements FabricService {
                         if (configurations != null) {
                             Map<String, String> zookeeperConfig = configurations.get("org.fusesource.fabric.zookeeper");
                             if (zookeeperConfig != null) {
-                                zooKeeperUrl = ZooKeeperUtils.getSubstitutedData(zooKeeper, zookeeperConfig.get(name));
+                                zooKeeperUrl = CuratorUtils.getSubstitutedData(curator, zookeeperConfig.get(name));
                             }
                         }
                     }

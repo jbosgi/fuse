@@ -16,10 +16,9 @@
  */
 package org.fusesource.fabric.bridge.zk.internal;
 
-import org.apache.zookeeper.KeeperException;
+import org.apache.curator.framework.CuratorFramework;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.service.FabricServiceImpl;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanCreationException;
@@ -59,15 +58,15 @@ public class ZkServerSetupBean implements SmartLifecycle {
      */
     @Override
     public void start() {
-        IZKClient client = ((FabricServiceImpl)fabricService).getZooKeeper();
+        CuratorFramework curator = ((FabricServiceImpl)fabricService).getCurator();
 
         // import ZK contents
         TestImport testImport = new TestImport();
         testImport.setSource("target/test-classes/zkexport");
         testImport.setNRegEx(new String[] {"dummy"});
-        testImport.setZooKeeper(client);
+        testImport.setCurator(curator);
         try {
-            testImport.doExecute(client);
+            testImport.doExecute(curator);
         } catch (Exception e) {
             String msg = "Error setting up ZK config: " + e.getMessage();
             LOG.error(msg, e);
@@ -80,13 +79,9 @@ public class ZkServerSetupBean implements SmartLifecycle {
     public void stop() {
         // clean up old ZK configuration
         try {
-            IZKClient client = ((FabricServiceImpl)fabricService).getZooKeeper();
-            client.deleteWithChildren(FABRIC_ROOT_PATH);
-        } catch (InterruptedException e) {
-            String msg = "Error cleaning up old ZK config: " + e.getMessage();
-            LOG.error(msg, e);
-            throw new BeanCreationException(msg, e);
-        } catch (KeeperException e) {
+            CuratorFramework curator = ((FabricServiceImpl)fabricService).getCurator();
+            curator.delete().forPath(FABRIC_ROOT_PATH);
+        } catch (Exception e) {
             String msg = "Error cleaning up old ZK config: " + e.getMessage();
             LOG.error(msg, e);
             throw new BeanCreationException(msg, e);

@@ -20,14 +20,16 @@ import java.io.IOException;
 
 import org.apache.felix.service.command.CommandSession;
 import org.apache.karaf.shell.console.OsgiCommandSupport;
+import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.ZooKeeperClusterService;
 import org.fusesource.fabric.utils.shell.ShellUtils;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.osgi.framework.ServiceReference;
 
 /**
  */
 public abstract class EnsembleCommandSupport extends OsgiCommandSupport {
+
+    protected FabricService fabricService;
     protected ZooKeeperClusterService service;
 
     public ZooKeeperClusterService getService() {
@@ -38,11 +40,15 @@ public abstract class EnsembleCommandSupport extends OsgiCommandSupport {
         this.service = service;
     }
 
+    public FabricService getFabricService() {
+        return fabricService;
+    }
+
+    public void setFabricService(FabricService fabricService) {
+        this.fabricService = fabricService;
+    }
+
     protected void checkFabricAvailable() {
-        ServiceReference sr = getBundleContext().getServiceReference(IZKClient.class.getName());
-        if (sr == null) {
-            throw new IllegalStateException("No Fabric available, please create one using fabric:create or fabric:join.");
-        }
     }
 
     protected boolean checkIfShouldModify(CommandSession session, boolean force) throws IOException {

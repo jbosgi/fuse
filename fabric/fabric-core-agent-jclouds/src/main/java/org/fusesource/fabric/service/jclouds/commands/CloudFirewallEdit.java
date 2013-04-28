@@ -21,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import com.google.common.base.Strings;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.fusesource.fabric.api.Container;
@@ -36,6 +37,8 @@ import org.jclouds.compute.domain.NodeMetadata;
 
 @Command(name = "cloud-firewall-edit", scope = "fabric", description = "Manages the firewall of a cloud container.")
 public class CloudFirewallEdit extends FabricCommand {
+
+    private CuratorFramework curator;
 
     @Option( name = "--port", required = false, multiValued = true, description = "The target port.")
     private int[] port;
@@ -66,7 +69,7 @@ public class CloudFirewallEdit extends FabricCommand {
     private List<ComputeService> computeServices;
 
     private boolean validateArguments() {
-        if (Strings.isNullOrEmpty(contextName) && (Strings.isNullOrEmpty(targetContainerName) || !getZooKeeper().isConnected())) {
+        if (Strings.isNullOrEmpty(contextName) && (Strings.isNullOrEmpty(targetContainerName) || !curator.getZookeeperClient().isConnected())) {
             System.out.println("You need to either specify a valid cloud service and a node id or a valid target fabric container name.");
             System.out.println("To use the target container name option you need to be connected to fabric.");
             return false;
@@ -90,7 +93,7 @@ public class CloudFirewallEdit extends FabricCommand {
             sourceCidrs.add(sourceCidr);
         }
 
-        if (getZooKeeper().isConnected() && !Strings.isNullOrEmpty(sourceContainerName)) {
+        if (curator.getZookeeperClient().isConnected() && !Strings.isNullOrEmpty(sourceContainerName)) {
             Container sourceContainer = fabricService.getContainer(sourceContainerName);
             if (sourceContainer != null && !Strings.isNullOrEmpty(sourceContainer.getPublicIp())) {
                 sourceCidrs.add(sourceContainer.getPublicIp() + "/32");
@@ -107,7 +110,7 @@ public class CloudFirewallEdit extends FabricCommand {
      * @return
      */
     private ComputeService findTargetComputeService() {
-        if (!Strings.isNullOrEmpty(targetContainerName) && getZooKeeper().isConnected()) {
+        if (!Strings.isNullOrEmpty(targetContainerName) && curator.getZookeeperClient().isConnected()) {
             CreateJCloudsContainerMetadata metadata = getContainerCloudMetadata(targetContainerName);
             if (metadata != null) {
             CreateJCloudsContainerOptions options = metadata.getCreateOptions();
@@ -148,7 +151,7 @@ public class CloudFirewallEdit extends FabricCommand {
 
             NodeMetadata node = null;
 
-            if (!Strings.isNullOrEmpty(targetContainerName) && getZooKeeper().isConnected() && fabricService != null) {
+            if (!Strings.isNullOrEmpty(targetContainerName) && curator.getZookeeperClient().isConnected() && fabricService != null) {
                CreateJCloudsContainerMetadata metadata = getContainerCloudMetadata(targetContainerName);
                if (metadata != null && !Strings.isNullOrEmpty(metadata.getNodeId())) {
                    targetNodeId = metadata.getNodeId();
@@ -184,7 +187,7 @@ public class CloudFirewallEdit extends FabricCommand {
     }
 
     private CreateJCloudsContainerMetadata getContainerCloudMetadata(String name) {
-        if (!Strings.isNullOrEmpty(targetContainerName) && getZooKeeper().isConnected() && fabricService != null) {
+        if (!Strings.isNullOrEmpty(targetContainerName) && curator.getZookeeperClient().isConnected() && fabricService != null) {
             Container targetContainer = fabricService.getContainer(targetContainerName);
             if (targetContainer != null && targetContainer.getMetadata() != null) {
                 CreateContainerMetadata metadata = targetContainer.getMetadata();
@@ -210,5 +213,13 @@ public class CloudFirewallEdit extends FabricCommand {
 
     public void setComputeServices(List<ComputeService> computeServices) {
         this.computeServices = computeServices;
+    }
+
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

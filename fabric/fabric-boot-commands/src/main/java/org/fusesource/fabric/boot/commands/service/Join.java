@@ -13,8 +13,6 @@ public interface Join {
 
     void setConfigurationAdmin(ConfigurationAdmin configurationAdmin);
 
-    void setZooKeeper(IZKClient zooKeeper);
-
     String getVersion();
 
     void setVersion(String version);

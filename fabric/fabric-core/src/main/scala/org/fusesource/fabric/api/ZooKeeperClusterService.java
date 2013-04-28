@@ -16,7 +16,7 @@
  */
 package org.fusesource.fabric.api;
 
-import org.fusesource.fabric.zookeeper.IZKClient;
+import org.apache.curator.framework.CuratorFramework;
 
 import java.util.List;
 
@@ -27,12 +27,6 @@ public interface ZooKeeperClusterService {
 	 * @return
 	 */
     List<String> getEnsembleContainers();
-
-	/**
-	 * Reutrns the Zookeeper URL.
-	 * @return
-	 */
-    String getZooKeeperUrl();
 
 	/**
 	 * Creates a cluster, with the specified containers as servers.
@@ -73,5 +67,5 @@ public interface ZooKeeperClusterService {
 
     void clean();
 
-    IZKClient getZooKeeper();
+    CuratorFramework getCurator();
 }

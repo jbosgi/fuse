@@ -16,34 +16,35 @@
  */
 package org.fusesource.fabric.git.zkbridge;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.fusesource.fabric.utils.Files;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.fusesource.fabric.zookeeper.internal.ZKClient;
 import org.fusesource.fabric.zookeeper.spring.ZKServerFactoryBean;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.linkedin.util.clock.Timespan;
-import org.osgi.framework.BundleContext;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Dictionary;
-import java.util.Hashtable;
-import java.util.Properties;
 
-import static org.junit.Assert.*;
+import static org.fusesource.fabric.zookeeper.ZkPath.CONFIG_VERSION;
+import static org.fusesource.fabric.zookeeper.ZkPath.CONFIG_VERSIONS;
+import static org.fusesource.fabric.zookeeper.ZkPath.CONFIG_VERSIONS_CONTAINER;
+import static org.fusesource.fabric.zookeeper.ZkPath.CONFIG_VERSIONS_PROFILE;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.deleteSafe;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.set;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class BridgeTest {
 
     private ZKServerFactoryBean sfb;
-    private IZKClient zookeeper;
+    private CuratorFramework curator;
     private Git git;
     private Git remote;
 
@@ -54,9 +55,13 @@ public class BridgeTest {
         delete(sfb.getDataLogDir());
         sfb.afterPropertiesSet();
 
-        ZKClient zk = new ZKClient("localhost:" + sfb.getClientPortAddress().getPort(), new Timespan(3600000), null);
-        zk.start();
-        zookeeper = zk;
+        CuratorFramework curatorFramework = CuratorFrameworkFactory.builder()
+                                                                   .connectString("localhost:" + sfb.getClientPortAddress().getPort())
+                                                                   .retryPolicy(new ExponentialBackoffRetry(500, 5))
+                                                                   .connectionTimeoutMs(3600000).build();
+
+        curatorFramework.start();
+        curator = curatorFramework;
 
         File root =  new File(System.getProperty("basedir", ".") + "/target/git").getCanonicalFile();
         delete(root);
@@ -82,17 +87,17 @@ public class BridgeTest {
 
     @Test
     public void testNoLocalNorRemoteBranch() throws Exception {
-        ZooKeeperUtils.deleteSafe(zookeeper, ZkPath.CONFIG_VERSIONS.getPath());
-        ZooKeeperUtils.set(zookeeper, ZkPath.CONFIG_VERSION.getPath("1.0"), "description = default version\n");
-        ZooKeeperUtils.set(zookeeper, ZkPath.CONFIG_VERSIONS_PROFILE.getPath("1.0", "p1") + "/thepid.properties", "foo = bar\n");
-        ZooKeeperUtils.set(zookeeper, ZkPath.CONFIG_VERSIONS_PROFILE.getPath("1.0", "p1") + "/thexml.xml", "<hello/>\n");
-        ZooKeeperUtils.set(zookeeper, ZkPath.CONFIG_VERSIONS_CONTAINER.getPath("1.0", "root"), "p1");
+        deleteSafe(curator, CONFIG_VERSIONS.getPath());
+        set(curator, CONFIG_VERSION.getPath("1.0"), "description = default version\n");
+        set(curator, CONFIG_VERSIONS_PROFILE.getPath("1.0", "p1") + "/thepid.properties", "foo = bar\n");
+        set(curator, CONFIG_VERSIONS_PROFILE.getPath("1.0", "p1") + "/thexml.xml", "<hello/>\n");
+        set(curator, CONFIG_VERSIONS_CONTAINER.getPath("1.0", "root"), "p1");
 
 
         ObjectId rev1 = git.getRepository().getRef("HEAD").getObjectId();
-        Bridge.update(git, zookeeper);
+        Bridge.update(git, curator);
         ObjectId rev2 = git.getRepository().getRef("HEAD").getObjectId();
-        Bridge.update(git, zookeeper);
+        Bridge.update(git, curator);
         ObjectId rev3 = git.getRepository().getRef("HEAD").getObjectId();
 
         assertFalse(rev1.equals(rev2));
@@ -105,12 +110,12 @@ public class BridgeTest {
         remote.add().addFilepattern(".").call();
         remote.commit().setMessage("Add p2 profile").call();
 
-        ZooKeeperUtils.set(zookeeper, ZkPath.CONFIG_VERSIONS_PROFILE.getPath("1.0", "p3") + "/thepid.properties", "foo = bar\n");
+        set(curator, CONFIG_VERSIONS_PROFILE.getPath("1.0", "p3") + "/thepid.properties", "foo = bar\n");
 
         rev1 = git.getRepository().getRef("HEAD").getObjectId();
-        Bridge.update(git, zookeeper);
+        Bridge.update(git, curator);
         rev2 = git.getRepository().getRef("HEAD").getObjectId();
-        Bridge.update(git, zookeeper);
+        Bridge.update(git, curator);
         rev3 = git.getRepository().getRef("HEAD").getObjectId();
 
         assertFalse(rev1.equals(rev2));

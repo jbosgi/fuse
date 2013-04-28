@@ -1,8 +1,20 @@
 package org.fusesource.fabric.features;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.karaf.features.Feature;
+import org.apache.karaf.features.FeaturesService;
+import org.apache.karaf.features.Repository;
+import org.apache.karaf.features.internal.FeatureValidationUtil;
+import org.apache.karaf.features.internal.RepositoryImpl;
+import org.fusesource.fabric.api.Container;
+import org.fusesource.fabric.api.FabricService;
+import org.fusesource.fabric.api.Profile;
+import org.fusesource.fabric.api.Version;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,75 +24,34 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.apache.karaf.features.Feature;
-import org.apache.karaf.features.FeaturesService;
-import org.apache.karaf.features.Repository;
-import org.apache.karaf.features.internal.FeatureValidationUtil;
-import org.apache.karaf.features.internal.FeaturesServiceImpl;
-import org.apache.karaf.features.internal.RepositoryImpl;
-import org.apache.zookeeper.KeeperException;
-import org.fusesource.fabric.api.Container;
-import org.fusesource.fabric.api.FabricService;
-import org.fusesource.fabric.api.Profile;
-import org.fusesource.fabric.api.Version;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.linkedin.zookeeper.client.LifecycleListener;
-import org.linkedin.zookeeper.tracker.NodeEvent;
-import org.linkedin.zookeeper.tracker.NodeEventsListener;
-import org.linkedin.zookeeper.tracker.ZKStringDataReader;
-import org.linkedin.zookeeper.tracker.ZooKeeperTreeTracker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.fusesource.fabric.utils.features.FeatureUtils.search;
 
 /**
  * A FeaturesService implementation for Fabric managed containers.
  */
-public class FabricFeaturesServiceImpl implements FeaturesService, NodeEventsListener<String>, LifecycleListener {
+public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FeaturesService.class);
 
     private FabricService fabricService;
-    private IZKClient zooKeeper;
-
-    private ZooKeeperTreeTracker<String> profilesTracker;
-
+    private CuratorFramework curator;
 
     private final Set<Repository> repositories = new HashSet<Repository>();
     private final Set<Feature> allfeatures = new HashSet<Feature>();
     private final Set<Feature> installed = new HashSet<Feature>();
 
     public void init() throws Exception {
+        fabricService.trackConfiguration(this);
     }
 
     public void destroy() throws Exception {
-        profilesTracker.destroy();
     }
 
     @Override
-    public synchronized void onEvents(Collection<NodeEvent<String>> nodeEvents) {
+    public void run() {
         repositories.clear();
         allfeatures.clear();
         installed.clear();
-    }
-
-    @Override
-    public void onConnected() {
-        profilesTracker = new ZooKeeperTreeTracker<String>(zooKeeper, new ZKStringDataReader(), ZkPath.CONFIG_VERSIONS.getPath());
-        try {
-            profilesTracker.track(this);
-        } catch (InterruptedException e) {
-            LOGGER.error("Error while setting tracker for Fabric Features Service.", e);
-        } catch (KeeperException e) {
-            LOGGER.error("Error while setting tracker for Fabric Features Service.", e);
-        }
-        onEvents(null);
-    }
-
-    @Override
-    public void onDisconnected() {
     }
 
     @Override
@@ -415,11 +386,11 @@ public class FabricFeaturesServiceImpl implements FeaturesService, NodeEventsLis
         this.fabricService = fabricService;
     }
 
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

@@ -17,6 +17,9 @@
 
 package org.fusesource.fabric.git.http;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.state.ConnectionStateListener;
 import org.eclipse.jgit.http.server.GitServlet;
 import org.fusesource.fabric.git.GitNode;
 import org.fusesource.fabric.groups.ChangeListener;
@@ -24,9 +27,6 @@ import org.fusesource.fabric.groups.ClusteredSingleton;
 import org.fusesource.fabric.groups.Group;
 import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
 import org.fusesource.fabric.utils.SystemProperties;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.linkedin.zookeeper.client.LifecycleListener;
 import org.osgi.framework.Constants;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
@@ -42,12 +42,14 @@ import java.io.FileNotFoundException;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
-public class GitHttpServerRegistrationHandler implements LifecycleListener, ConfigurationListener, ChangeListener {
+import static org.fusesource.fabric.zookeeper.ZkPath.GIT;
+
+public class GitHttpServerRegistrationHandler implements ConnectionStateListener, ConfigurationListener, ChangeListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GitHttpServerRegistrationHandler.class);
 
     private final ClusteredSingleton<GitNode> singleton = new ClusteredSingleton<GitNode>(GitNode.class);
-    private IZKClient zookeeper = null;
+    private CuratorFramework curator = null;
     private boolean connected = false;
     private final String name = System.getProperty(SystemProperties.KARAF_NAME);
 
@@ -116,10 +118,9 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
     }
 
 
-    @Override
     public synchronized void onConnected() {
         connected = true;
-        group = ZooKeeperGroupFactory.create(zookeeper, ZkPath.GIT.getPath());
+        group = ZooKeeperGroupFactory.create(curator, GIT.getPath());
         singleton.start(group);
 
         if (httpService != null) {
@@ -127,7 +128,6 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
         }
     }
 
-    @Override
     public synchronized void onDisconnected() {
         connected = false;
         try {
@@ -136,6 +136,19 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
             }
         } catch (Exception e) {
             LOGGER.warn("Failed to remove git server from registry.", e);
+        }
+    }
+
+    @Override
+    public void stateChanged(CuratorFramework client, ConnectionState newState) {
+        switch (newState) {
+            case CONNECTED:
+            case RECONNECTED:
+                this.curator = client;
+                onConnected();
+                break;
+            default:
+                onDisconnected();
         }
     }
 
@@ -246,13 +259,5 @@ public class GitHttpServerRegistrationHandler implements LifecycleListener, Conf
 
     public void setConfigurationAdmin(ConfigurationAdmin configurationAdmin) {
         this.configurationAdmin = configurationAdmin;
-    }
-
-    public IZKClient getZookeeper() {
-        return zookeeper;
-    }
-
-    public void setZookeeper(IZKClient zookeeper) {
-        this.zookeeper = zookeeper;
     }
 }

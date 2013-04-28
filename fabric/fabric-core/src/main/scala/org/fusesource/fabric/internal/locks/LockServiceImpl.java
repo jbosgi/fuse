@@ -16,6 +16,7 @@
  */
 package org.fusesource.fabric.internal.locks;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.fusesource.fabric.api.Lock;
 import org.fusesource.fabric.api.LockService;
 import org.fusesource.fabric.zookeeper.IZKClient;
@@ -25,11 +26,11 @@ import java.util.Map;
 
 public class LockServiceImpl implements LockService {
 
-    private final IZKClient zooKeeper;
+    private final CuratorFramework curator;
     private final Map<String, Lock> locks = new HashMap<String, Lock>();
 
-    public LockServiceImpl(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public LockServiceImpl(CuratorFramework curator) {
+        this.curator = curator;
     }
 
     @Override
@@ -37,7 +38,7 @@ public class LockServiceImpl implements LockService {
         if (locks.containsKey(path)) {
             return locks.get(path);
         } else {
-            locks.put(path, new LockImpl(zooKeeper, path));
+            locks.put(path, new LockImpl(curator, path));
             return locks.get(path);
         }
     }

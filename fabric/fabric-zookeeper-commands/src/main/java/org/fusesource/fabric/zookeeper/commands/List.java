@@ -16,10 +16,12 @@
  */
 package org.fusesource.fabric.zookeeper.commands;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
-import org.fusesource.fabric.zookeeper.IZKClient;
+
+import java.util.ArrayList;
 
 @Command(name = "list", scope = "zk", description = "List a znode's children", detailedDescription = "classpath:list.txt")
 public class List extends ZooKeeperCommandSupport {
@@ -36,30 +38,40 @@ public class List extends ZooKeeperCommandSupport {
     //TODO - Be good to also have an option to show other ZK attributes for a node similar to ls -la
 
     @Override
-    protected void doExecute(IZKClient zk) throws Exception {
-        display(zk, path);
+    protected void doExecute(CuratorFramework curator) throws Exception {
+        display(curator, path);
     }
 
-    private java.util.List<String> getPaths(IZKClient zk) throws Exception {
+    private java.util.List<String> getPaths(CuratorFramework curator) throws Exception {
         if (recursive) {
-            return zk.getAllChildren(path);
+            java.util.List<String> allChildren = new ArrayList<String>();
+            populatePaths(curator, path, allChildren);
+            return allChildren;
         } else {
-            return zk.getChildren(path);
+            return curator.getChildren().forPath(path);
         }
     }
 
-    protected void display(IZKClient zk, String path) throws Exception {
+    private void populatePaths(CuratorFramework curator, String path, java.util.List<String> paths) throws Exception {
+        java.util.List<String> children = curator.getChildren().forPath(path);
+        paths.addAll(children);
+        for (String child : children) {
+            populatePaths(curator, path + "/" + child, paths);
+        }
+    }
+
+    protected void display(CuratorFramework curator, String path) throws Exception {
         if (!path.endsWith("/")) {
             path = path + "/";
         }
         if (!path.startsWith("/")) {
             path = "/" + path;
         }
-        java.util.List<String> paths = getPaths(zk);
+        java.util.List<String> paths = getPaths(curator);
 
         for(String p : paths) {
             if (display) {
-                byte[] data = zk.getData(path + p);
+                byte[] data = curator.getData().forPath(path + p);
                 if (data != null) {
                     System.out.printf("%s = %s\n", p, new String(data));
                 } else {

@@ -17,29 +17,37 @@
 
 package org.fusesource.fabric.service.jclouds.commands;
 
-import java.util.Dictionary;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.boot.commands.support.FabricCommand;
-import org.fusesource.fabric.zookeeper.ZkPath;
 import org.jclouds.karaf.core.Constants;
 import org.osgi.service.cm.Configuration;
+
+import java.util.Dictionary;
+
+import static org.fusesource.fabric.zookeeper.ZkPath.CLOUD_SERVICE;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.deleteSafe;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.exists;
+
 
 @Command(name = "cloud-service-remove", scope = "fabric", description = "Removes a cloud provider from the fabric's registry.")
 public class CloudServiceRemove extends FabricCommand {
     private static final String PID_FILTER = "(service.pid=%s*)";
+
+    private CuratorFramework curator;
 
     @Argument(index = 0, name = "name", required = true, description = "JClouds context name.")
     private String name;
 
     @Override
     protected Object doExecute() throws Exception {
-        boolean connected = getZooKeeper().isConnected();
+        boolean connected = curator.getZookeeperClient().isConnected();
         Container current = null;
         if (connected) {
-            if (getZooKeeper().exists(ZkPath.CLOUD_SERVICE.getPath(name)) != null) {
-                getZooKeeper().deleteWithChildren(ZkPath.CLOUD_SERVICE.getPath(name));
+            if (exists(curator, CLOUD_SERVICE.getPath(name)) != null) {
+                deleteSafe(curator, CLOUD_SERVICE.getPath(name));
             }
             current = fabricService.getCurrentContainer();
         }
@@ -73,5 +81,13 @@ public class CloudServiceRemove extends FabricCommand {
             //noop
         }
         return configurations;
+    }
+
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

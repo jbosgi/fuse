@@ -28,7 +28,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.ops4j.pax.exam.Customizer;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.Configuration;
@@ -152,7 +151,7 @@ public class FabricBridgeIntegrationTest extends AbstractIntegrationTest {
 
             // wait for zookeeper service to become available
             Thread.sleep(DEFAULT_TIMEOUT);
-            IZKClient zooKeeper = getOsgiService(IZKClient.class, DEFAULT_TIMEOUT);
+            CuratorFramework cuator = getOsgiService(CuratorFramework.class, DEFAULT_TIMEOUT);
 
             // assert fabric-bridge-zookeeper was started
             bundle = getInstalledBundle(FABRIC_BRIDGE_ZOOKEEPER_BUNDLE);

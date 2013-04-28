@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import jline.Terminal;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
@@ -62,6 +63,7 @@ public class ProfileEdit extends FabricCommand {
     static final String DELIMETER = ",";
     static final String PID_KEY_SEPARATOR = "/";
 
+    private CuratorFramework curator;
 
     @Option(name = "-r", aliases = {"--repositories"}, description = "Edit the features repositories", required = false, multiValued = false)
     private String repositoryUriList;
@@ -266,7 +268,7 @@ public class ProfileEdit extends FabricCommand {
         ConsoleEditor editor = editorFactory.create(getTerminal());
         editor.setTitle("Profile");
         editor.setOpenEnabled(false);
-        editor.setContentManager(new ZookeeperContentManager(getZooKeeper()));
+        editor.setContentManager(new ZookeeperContentManager(curator));
         editor.open(path, id + " " + version);
         editor.start();
     }
@@ -369,5 +371,13 @@ public class ProfileEdit extends FabricCommand {
 
     public void setEditorFactory(EditorFactory editorFactory) {
         this.editorFactory = editorFactory;
+    }
+
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

@@ -63,6 +63,7 @@ public abstract class ContainerCreateSupport extends FabricCommand {
         validateContainersName(name);
         if (!isEnsembleServer) {
             ServiceReference sr = getBundleContext().getServiceReference(ZooKeeperClusterService.class.getName());
+
             ZooKeeperClusterService zkcs = sr != null ? getService(ZooKeeperClusterService.class, sr) : null;
             if (zkcs == null) {
                 throw new IllegalStateException("Unable to find ZooKeeperClusterService service");

@@ -16,32 +16,27 @@
  */
 package org.fusesource.fabric.boot.commands.support;
 
-import java.util.List;
-
 import org.apache.karaf.shell.console.Completer;
 import org.apache.karaf.shell.console.completer.StringsCompleter;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.zookeeper.IZKClient;
 
+import java.util.List;
+
 public class ContainerCompleter implements Completer {
 
     protected FabricService fabricService;
-    protected IZKClient zooKeeper;
 
     @Override
     public int complete(String buffer, int cursor, List<String> candidates) {
-        if (zooKeeper.isConnected()) {
-            StringsCompleter delegate = new StringsCompleter();
-            for (Container container : fabricService.getContainers()) {
-                if (apply(container)) {
-                    delegate.getStrings().add(container.getId());
-                }
+        StringsCompleter delegate = new StringsCompleter();
+        for (Container container : fabricService.getContainers()) {
+            if (apply(container)) {
+                delegate.getStrings().add(container.getId());
             }
-            return delegate.complete(buffer, cursor, candidates);
-        } else {
-            return 0;
         }
+        return delegate.complete(buffer, cursor, candidates);
     }
 
     public boolean apply(Container container) {
@@ -54,13 +49,5 @@ public class ContainerCompleter implements Completer {
 
     public void setFabricService(FabricService fabricService) {
         this.fabricService = fabricService;
-    }
-
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
-    }
-
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
     }
 }

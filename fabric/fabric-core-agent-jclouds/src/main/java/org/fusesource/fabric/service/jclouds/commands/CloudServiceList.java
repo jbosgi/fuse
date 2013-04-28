@@ -81,6 +81,7 @@ public class CloudServiceList extends FabricCommand {
 		return null;
 	}
 
+    //TODO: May need a cleaner way to handle this fabric vs local services.
 	protected void printComputeProvidersOrApis(Iterable<String> providersOrApis, List<ComputeService> computeServices, String indent, PrintStream out) {
 		out.println(String.format(PROVIDERFORMAT, "[id]", "[type]", "[local services]", "[fabric services]"));
 		for (String providerOrApi : providersOrApis) {
@@ -95,12 +96,7 @@ public class CloudServiceList extends FabricCommand {
 			for (ComputeService computeService : computeServices) {
 				if (computeService.getContext().unwrap().getId().equals(providerOrApi)) {
 					String name = (String) computeService.getContext().unwrap().getName();
-					if (getZooKeeper() != null && getZooKeeper().isConnected()) {
-						fabricServices.append(name).append(" ");
-					} else {
-						localServices.append(name).append(" ");
-					}
-
+                    fabricServices.append(name).append(" ");
 				}
 			}
 			localServices.append("]");

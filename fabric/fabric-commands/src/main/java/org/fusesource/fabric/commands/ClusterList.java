@@ -16,25 +16,27 @@
  */
 package org.fusesource.fabric.commands;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
-import org.apache.zookeeper.KeeperException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.fusesource.fabric.boot.commands.support.FabricCommand;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
 
-import java.io.IOException;
 import java.io.PrintStream;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.exists;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.getSubstitutedData;
+
 @Command(name = "cluster-list", scope = "fabric", description = "Lists all ActiveMQ message brokers in the fabric, enabling you to see which brokers are grouped into clusters.")
 public class ClusterList extends FabricCommand {
 
     protected static String CLUSTER_PREFIX = "/fabric/registry/clusters";
+
+    private CuratorFramework curator;
 
     @Argument(required = false, description = "Path of the fabric registry node (Zookeeper registry node) to list. Relative paths are evaluated relative to the base node, /fabric/registry/clusters. If not specified, all clusters are listed.")
     String path = "";
@@ -54,16 +56,16 @@ public class ClusterList extends FabricCommand {
         return null;
     }
 
-    protected void printCluster(String dir, PrintStream out) throws InterruptedException, KeeperException, IOException, URISyntaxException {
+    protected void printCluster(String dir, PrintStream out) throws Exception {
         // do we have any clusters at all?
-        if (getZooKeeper().exists(dir) == null) {
+        if (exists(curator, dir) == null) {
             return;
         }
-        List<String> children = getZooKeeper().getAllChildren(dir);
+        List<String> children = curator.getChildren().forPath(dir);
         HashMap<String, HashMap<String,ClusterNode>> clusters = new HashMap<String, HashMap<String,ClusterNode>>();
         for (String child : children) {
             String childDir = dir + "/" + child;
-            byte[] data = getZooKeeper().getData(childDir);
+            byte[] data = curator.getData().forPath(childDir);
             if (data != null && data.length > 0) {
                 String text = new String(data).trim();
                 if (!text.isEmpty()) {
@@ -93,7 +95,7 @@ public class ClusterList extends FabricCommand {
                         if (services != null) {
                             if (!services.isEmpty()) {
                                 for (Object service : services) {
-                                    node.services.add(ZooKeeperUtils.getSubstitutedData(getZooKeeper(), service.toString()));
+                                    node.services.add(getSubstitutedData(curator, service.toString()));
                                 }
 
                                 node.masters.add(agent);
@@ -168,4 +170,11 @@ public class ClusterList extends FabricCommand {
         }
     }
 
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
+    }
 }

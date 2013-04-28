@@ -16,9 +16,11 @@
  */
 package org.fusesource.fabric.zookeeper.commands;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
-import org.fusesource.fabric.zookeeper.IZKClient;
+
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.get;
 
 @Command(name = "get", scope = "zk", description = "Get a znode's data", detailedDescription = "classpath:get.txt")
 public class Get extends ZooKeeperCommandSupport {
@@ -27,7 +29,7 @@ public class Get extends ZooKeeperCommandSupport {
     String path;
 
     @Override
-    protected void doExecute(IZKClient zk) throws Exception {
-        System.out.println(zk.getStringData(path));
+    protected void doExecute(CuratorFramework curator) throws Exception {
+        System.out.println(get(curator, path));
     }
 }

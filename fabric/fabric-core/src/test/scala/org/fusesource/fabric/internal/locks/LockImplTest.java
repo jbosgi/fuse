@@ -43,7 +43,7 @@ public class LockImplTest {
         String id = "00000001";
         IZKClient zooKeeper = createMock(IZKClient.class);
         String path = "/my/lock";
-        LockImpl lock = new LockImpl(zooKeeper, path);
+        LockImpl lock = new LockImpl(null, path);
 
         expect(zooKeeper.exists(path)).andReturn(new Stat()).once();
         expect(zooKeeper.create(ZkPath.LOCK.getPath(path), CreateMode.EPHEMERAL_SEQUENTIAL)).andReturn("/my/lock/" + id).once();
@@ -58,7 +58,7 @@ public class LockImplTest {
         String id = "00000001";
         IZKClient zooKeeper = createMock(IZKClient.class);
         String path = "/my/lock";
-        LockImpl lock = new LockImpl(zooKeeper, path);
+        LockImpl lock = new LockImpl(null, path);
 
         expect(zooKeeper.exists(path)).andReturn(new Stat()).times(2);
         expect(zooKeeper.create(ZkPath.LOCK.getPath(path), CreateMode.EPHEMERAL_SEQUENTIAL)).andReturn("/my/lock/" + id).once();
@@ -75,7 +75,7 @@ public class LockImplTest {
         String competitor = "00000002";
         IZKClient zooKeeper = createMock(IZKClient.class);
         String path = "/my/lock";
-        LockImpl lock = new LockImpl(zooKeeper, path);
+        LockImpl lock = new LockImpl(null, path);
 
         expect(zooKeeper.exists(path)).andReturn(new Stat()).once();
         expect(zooKeeper.create(ZkPath.LOCK.getPath(path), CreateMode.EPHEMERAL_SEQUENTIAL)).andReturn("/my/lock/" + id).once();
@@ -91,7 +91,7 @@ public class LockImplTest {
         String competitor = "00000001";
         IZKClient zooKeeper = createMock(IZKClient.class);
         String path = "/my/lock";
-        LockImpl lock = new LockImpl(zooKeeper, path);
+        LockImpl lock = new LockImpl(null, path);
 
         expect(zooKeeper.exists(path)).andReturn(new Stat()).once();
         expect(zooKeeper.create(ZkPath.LOCK.getPath(path), CreateMode.EPHEMERAL_SEQUENTIAL)).andReturn("/my/lock/" + id).once();
@@ -110,7 +110,7 @@ public class LockImplTest {
         String competitor = "00000001";
         IZKClient zooKeeper = createMock(IZKClient.class);
         String path = "/my/lock";
-        final LockImpl lock = new LockImpl(zooKeeper, path);
+        final LockImpl lock = new LockImpl(null, path);
 
         expect(zooKeeper.exists(path)).andReturn(new Stat()).once();
         expect(zooKeeper.create(ZkPath.LOCK.getPath(path), CreateMode.EPHEMERAL_SEQUENTIAL)).andReturn("/my/lock/" + id).once();

@@ -24,14 +24,14 @@
         </cm:default-properties>
     </cm:property-placeholder>
 
-    <reference id="zookeeper" interface="org.fusesource.fabric.zookeeper.IZKClient"/>
+    <reference id="curator" interface="org.apache.curator.framework.CuratorFramework"/>
     <reference id="gitService" interface="org.fusesource.fabric.git.FabricGitService" availability="optional">
         <reference-listener ref="bridge" bind-method="bindGitService" unbind-method="unbindGitService"/>
     </reference>
 
     <bean id="bridge" class="org.fusesource.fabric.git.zkbridge.Bridge"
           init-method="init" destroy-method="destroy">
-        <property name="zookeeper" ref="zookeeper"/>
+        <property name="curator" ref="curator"/>
         <property name="period" value="${period}"/>
     </bean>
 

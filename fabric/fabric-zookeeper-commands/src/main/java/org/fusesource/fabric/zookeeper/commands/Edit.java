@@ -17,6 +17,7 @@
 package org.fusesource.fabric.zookeeper.commands;
 
 import jline.Terminal;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.zookeeper.CreateMode;
@@ -24,7 +25,6 @@ import org.apache.zookeeper.ZooDefs;
 import org.fusesource.fabric.commands.support.ZookeeperContentManager;
 import org.jledit.ConsoleEditor;
 import org.jledit.EditorFactory;
-import org.fusesource.fabric.zookeeper.IZKClient;
 
 import java.nio.charset.Charset;
 
@@ -39,14 +39,14 @@ public class Edit extends ZooKeeperCommandSupport {
     private EditorFactory editorFactory;
 
     @Override
-    protected void doExecute(IZKClient zk) throws Exception {
-        if (zk.exists(path) == null) {
-            zk.createWithParents(path,"", ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+    protected void doExecute(CuratorFramework curator) throws Exception {
+        if (curator.checkExists().forPath(path) == null) {
+            curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE).forPath(path);
         }
         //Call the editor
         ConsoleEditor editor = editorFactory.create(getTerminal());
         editor.setTitle("Znode");
-        editor.setContentManager(new ZookeeperContentManager(zk));
+        editor.setContentManager(new ZookeeperContentManager(curator));
         editor.open(path);
         editor.setOpenEnabled(false);
         editor.start();

@@ -22,6 +22,9 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.state.ConnectionStateListener;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
@@ -30,7 +33,6 @@ import org.fusesource.fabric.bridge.BridgeConnector;
 import org.fusesource.fabric.bridge.model.BrokerConfig;
 import org.fusesource.fabric.bridge.model.RemoteBridge;
 import org.fusesource.fabric.bridge.zk.internal.ZkConfigHelper;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.linkedin.zookeeper.client.LifecycleListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +47,7 @@ import org.springframework.context.ApplicationContextAware;
  */
 @XmlRootElement(name="zkbridge-connector")
 @XmlAccessorType(XmlAccessType.NONE)
-public class ZkBridgeConnector extends BridgeConnector implements LifecycleListener, ApplicationContextAware {
+public class ZkBridgeConnector extends BridgeConnector implements ConnectionStateListener, ApplicationContextAware {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(ZkBridgeConnector.class);
 
@@ -72,7 +74,7 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
     @XmlAttribute(required = true)
     private String zooKeeperRef;
 
-    private IZKClient zooKeeper;
+    private CuratorFramework curator;
 
     @XmlAttribute(required = true)
     private String fabricServiceRef;
@@ -90,15 +92,15 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
         if (gatewayProfileName == null) {
 			throw new IllegalArgumentException("Property profile must be set");
 		}
-        if (zooKeeper == null) {
-            throw new IllegalArgumentException("Property zooKeeper must be set");
+        if (curator == null) {
+            throw new IllegalArgumentException("Property curator must be set");
         }
         if (fabricService == null) {
             throw new IllegalArgumentException("Property fabricService must be set");
         }
 
         // configure self as a lifecycle listener
-        zooKeeper.registerListener(this);
+        curator.getConnectionStateListenable().addListener(this);
         this.connected = true;
 
         // validate properties
@@ -179,14 +181,14 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
         // set the Bridge inbound destinations as the remote Gateway outbound destinations
         remoteBridge.setOutboundDestinations(super.getInboundDestinations());
 
-        ZkConfigHelper.registerBridge(zooKeeper, container, remoteBridge);
+        ZkConfigHelper.registerBridge(curator, container, remoteBridge);
     }
 
     protected void doStop() {
         // de-register self as a lifecycle listener
         if (this.connected) {
             try {
-                zooKeeper.removeListener(this);
+                curator.getConnectionStateListenable().removeListener(this);
                 this.connected = false;
             } catch (Exception e) {
                 LOG.error("Error removing Bridge Connector as ZooKeeper listener: " + e.getMessage(), e);
@@ -208,7 +210,7 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
         // remove the bridge from ZK
         if (container != null) {
             if (this.connected) {
-                ZkConfigHelper.removeBridge(zooKeeper, container);
+                ZkConfigHelper.removeBridge(curator, container);
             } else {
                 LOG.error("Bridge disconnected from Fabric Zookeeper service, " +
                     "unable to remove Bridge runtime configuration");
@@ -217,12 +219,22 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
     }
 
     @Override
+    public void stateChanged(CuratorFramework client, ConnectionState newState) {
+        switch (newState) {
+            case CONNECTED:
+            case RECONNECTED:
+                onConnected();
+                break;
+            default:
+                onDisconnected();
+        }
+    }
+
     public void onConnected() {
         LOG.info("Bridge connected to Fabric Zookeeper service");
         this.connected = true;
     }
 
-    @Override
     public void onDisconnected() {
         LOG.warn("Bridge disconnected from Fabric Zookeeper service");
         this.connected = false;
@@ -266,12 +278,12 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
         this.zooKeeperRef = zooKeeperRef;
     }
 
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 
     public FabricService getFabricService() {
@@ -305,5 +317,4 @@ public class ZkBridgeConnector extends BridgeConnector implements LifecycleListe
     public void setGatewayConnectRetries(int gatewayConnectRetries) {
         this.gatewayConnectRetries = gatewayConnectRetries;
     }
-
 }

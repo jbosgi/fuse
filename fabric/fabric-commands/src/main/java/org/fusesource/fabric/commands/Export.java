@@ -16,6 +16,13 @@
  */
 package org.fusesource.fabric.commands;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.felix.gogo.commands.Argument;
+import org.apache.felix.gogo.commands.Command;
+import org.apache.felix.gogo.commands.Option;
+import org.fusesource.fabric.boot.commands.support.FabricCommand;
+import org.fusesource.fabric.zookeeper.utils.RegexSupport;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -25,13 +32,6 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
-import org.apache.felix.gogo.commands.Argument;
-import org.apache.felix.gogo.commands.Command;
-import org.apache.felix.gogo.commands.Option;
-import org.fusesource.fabric.boot.commands.support.FabricCommand;
-import org.fusesource.fabric.zookeeper.utils.RegexSupport;
-import org.fusesource.fabric.zookeeper.IZKClient;
-
 
 import static org.fusesource.fabric.zookeeper.utils.RegexSupport.getPatterns;
 import static org.fusesource.fabric.zookeeper.utils.RegexSupport.matches;
@@ -39,6 +39,8 @@ import static org.fusesource.fabric.zookeeper.utils.RegexSupport.merge;
 
 @Command(name = "export", scope = "fabric", description = "Export the contents of the fabric registry to the specified directory in the filesystem", detailedDescription = "classpath:export.txt")
 public class Export extends FabricCommand {
+
+    private CuratorFramework curator;
 
     @Argument(description="Path of the directory to export to")
     String target = System.getProperty("karaf.home") + File.separator + "fabric" + File.separator + "export";
@@ -64,14 +66,14 @@ public class Export extends FabricCommand {
     File ignore = new File(".fabricignore");
     File include = new File(".fabricinclude");
 
-    protected void doExecute(IZKClient zk) throws Exception {
+    protected void doExecute(CuratorFramework curator) throws Exception {
         if (ignore.exists() && ignore.isFile()) {
             nregex = merge(ignore, nregex);
         }
         if (include.exists() && include.isFile()) {
             regex = merge(include, regex);
         }
-        export(zk, topLevel);
+        export(curator, topLevel);
         System.out.printf("Export to %s completed successfully\n", target);
     }
 
@@ -87,7 +89,7 @@ public class Export extends FabricCommand {
         parent.delete();
     }
 
-    protected void export(IZKClient zk, String path) throws Exception {
+    protected void export(CuratorFramework curator, String path) throws Exception {
         if (!path.endsWith("/")) {
             path = path + "/";
         }
@@ -99,7 +101,7 @@ public class Export extends FabricCommand {
         List<Pattern> profile = getPatterns(new String[]{RegexSupport.PROFILE_REGEX});
         List<Pattern> containerProperties = getPatterns(new String[]{RegexSupport.PROFILE_CONTAINER_PROPERTIES_REGEX});
 
-        List<String> paths = zk.getAllChildren(path);
+        List<String> paths = curator.getChildren().forPath(path);
         SortedSet<File> directories = new TreeSet<File>();
         Map<File, String> settings = new HashMap<File, String>();
 
@@ -108,7 +110,7 @@ public class Export extends FabricCommand {
             if (!matches(include, p, true) || matches(exclude, p, false) || matches(profile,p,false)) {
                 continue;
             }
-            byte[] data = zk.getData(p);
+            byte[] data = curator.getData().forPath(p);
             if (data != null) {
                 String name = p;
                 //Znodes that translate into folders and also have data need to change their name to avoid a collision.
@@ -125,7 +127,7 @@ public class Export extends FabricCommand {
                 }
                 //Make sure to append the parents
                 if(matches(containerProperties,p,false)) {
-                  byte[] parentData = zk.getData(p.substring(0,p.lastIndexOf("/")));
+                  byte[] parentData = curator.getData().forPath(p.substring(0, p.lastIndexOf("/")));
                     if (parentData != null) {
                         String parentValue = "parents=" + new String(parentData);
                         value += "\n" + parentValue;
@@ -195,9 +197,17 @@ public class Export extends FabricCommand {
         }
     }
 
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
+    }
+
     @Override
     protected Object doExecute() throws Exception {
-        doExecute(getZooKeeper());
+        doExecute(curator);
         return null;
     }
 }

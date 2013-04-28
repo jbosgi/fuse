@@ -64,7 +64,7 @@ public class EnsembleAdd extends EnsembleCommandSupport {
                     service.addToCluster(containers, options);
                 }
             }
-            System.out.println("Updated Zookeeper connection string: "+ service.getZooKeeperUrl());
+            System.out.println("Updated Zookeeper connection string: "+ fabricService.getZookeeperUrl());
         }
         return null;
     }

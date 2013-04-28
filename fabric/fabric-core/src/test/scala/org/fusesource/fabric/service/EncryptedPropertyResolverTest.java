@@ -16,6 +16,8 @@
  */
 package org.fusesource.fabric.service;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.GetDataBuilder;
 import org.fusesource.fabric.zookeeper.IZKClient;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -27,13 +29,18 @@ public class EncryptedPropertyResolverTest {
 
     @Test
     public void testResolve() throws Exception {
-        IZKClient zooKeeper = createMock(IZKClient.class);
-        expect(zooKeeper.getStringData(AUTHENTICATION_CRYPT_ALGORITHM.getPath())).andReturn("PBEWithMD5AndDES").anyTimes();
-        expect(zooKeeper.getStringData(AUTHENTICATION_CRYPT_PASSWORD.getPath())).andReturn("mypassword").anyTimes();
-        replay(zooKeeper);
+        CuratorFramework curator = createMock(CuratorFramework.class);
+        GetDataBuilder get = createMock(GetDataBuilder.class);
+
+        expect(curator.getData()).andReturn(get).anyTimes();
+        expect(get.forPath(AUTHENTICATION_CRYPT_ALGORITHM.getPath())).andReturn("PBEWithMD5AndDES".getBytes()).anyTimes();
+        expect(get.forPath(AUTHENTICATION_CRYPT_PASSWORD.getPath())).andReturn("mypassword".getBytes()).anyTimes();
+        replay(curator);
+        replay(get);
         EncryptedPropertyResolver resolver = new EncryptedPropertyResolver();
-        resolver.setZooKeeper(zooKeeper);
+        resolver.setCurator(curator);
         assertEquals("encryptedpassword",resolver.resolve(null, null, "crypt:URdoo9++D3tsoC9ODrTfLNK5WzviknO3Ig6qbI2HuvQ="));
-        verify(zooKeeper);
+        verify(curator);
+        verify(get);
     }
 }

@@ -16,20 +16,22 @@
  */
 package org.fusesource.fabric.commands;
 
-import java.io.File;
-
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.fusesource.fabric.boot.commands.support.FabricCommand;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.utils.ZookeeperImportUtils;
 
+import java.io.File;
+
+import static org.fusesource.fabric.zookeeper.utils.CuratorImportUtils.importFromFileSystem;
+import static org.fusesource.fabric.zookeeper.utils.CuratorImportUtils.importFromPropertiesFile;
 import static org.fusesource.fabric.zookeeper.utils.RegexSupport.merge;
 
 @Command(name = "import", scope = "fabric", description = "Import data either from a filesystem or from a properties file into the fabric registry (ZooKeeper tree)", detailedDescription = "classpath:import.txt")
 public class Import extends FabricCommand {
 
+    private CuratorFramework curator;
     @Argument(description = "Location of a filesystem (if --filesystem is specified) or a properties file (if --properties is specified).")
     protected String source = System.getProperty("karaf.home") + File.separator + "fabric" + File.separator + "import";
 
@@ -60,7 +62,7 @@ public class Import extends FabricCommand {
     File ignore = new File(".fabricignore");
     File include = new File(".fabricinclude");
 
-    protected void doExecute(IZKClient zk) throws Exception {
+    protected void doExecute(CuratorFramework curator) throws Exception {
         if (ignore.exists() && ignore.isFile()) {
             nregex = merge(ignore, nregex);
         }
@@ -74,10 +76,10 @@ public class Import extends FabricCommand {
             properties = false;
         }
         if (properties) {
-            ZookeeperImportUtils.importFromPropertiesFile(zk, source, target, regex, nregex, dryRun);
+            importFromPropertiesFile(curator, source, target, regex, nregex, dryRun);
         }
         if (filesystem) {
-            ZookeeperImportUtils.importFromFileSystem(zk, source, target, regex, nregex, delete, dryRun, verbose);
+            importFromFileSystem(curator, source, target, regex, nregex, delete, dryRun, verbose);
         }
         System.out.println("imported ZK data from: " + source);
     }
@@ -114,9 +116,17 @@ public class Import extends FabricCommand {
         this.verbose = verbose;
     }
 
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
+    }
+
     @Override
     protected Object doExecute() throws Exception {
-        doExecute(getZooKeeper());
+        doExecute(curator);
         return null;
     }
 }

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonNode;
@@ -40,7 +41,7 @@ public enum ZkPath {
 
     // config nodes
     CONFIGS                        ("/fabric/configs"),
-    CONFIGS_CONTAINERS             ("/fabric/configs/containers/"),
+    CONFIGS_CONTAINERS             ("/fabric/configs/containers"),
     CONFIG_CONTAINER               ("/fabric/configs/containers/{container}"),
     CONFIG_DEFAULT_VERSION         ("/fabric/configs/default-version"),
     CONFIG_VERSIONS                ("/fabric/configs/versions"),
@@ -109,8 +110,8 @@ public enum ZkPath {
     
     PORTS                          ("/fabric/registry/ports/"),
     PORTS_LOCK                     ("/fabric/registry/ports/lock"),
-    PORTS_CONTAINER                ("/fabric/registry/ports/containers/{container}/"),
-    PORTS_CONTAINER_PID            ("/fabric/registry/ports/containers/{container}/{pid}/"),
+    PORTS_CONTAINER                ("/fabric/registry/ports/containers/{container}"),
+    PORTS_CONTAINER_PID            ("/fabric/registry/ports/containers/{container}/{pid}"),
     PORTS_CONTAINER_PID_KEY        ("/fabric/registry/ports/containers/{container}/{pid}/{key}"),
     PORTS_IP                       ("/fabric/registry/ports/ip/{address}"),
 
@@ -164,6 +165,61 @@ public enum ZkPath {
         }
 
         byte rc [] = zooKeeper.getData(path);
+        if( ref!=null ) {
+            if( path.endsWith(".properties") ) {
+                Properties properties = new Properties();
+                properties.load(new ByteArrayInputStream(rc));
+                String property = properties.getProperty(ref);
+                if( property==null ) {
+                    throw  new IOException("Property '"+ ref +"' is not set in the properties file.");
+                }
+                rc = property.getBytes("UTF-8");
+            } else if( path.endsWith(".json") ) {
+                String[] fields = ref.split("\\.");
+                ObjectMapper mapper = new ObjectMapper();
+                JsonFactory factory = mapper.getJsonFactory();
+                JsonParser jp = factory.createJsonParser(rc);
+                JsonNode node = mapper.readTree(jp);
+                for(String field: fields) {
+                    if(!field.isEmpty()) {
+                        if( node.isObject() ) {
+                            node = node.get(field);
+                        } else if (node.isArray()) {
+                            node = node.get(Integer.parseInt(field));
+                        } else {
+                            throw  new IOException("Path '"+ ref +"' is not set in the json file.");
+                        }
+                        if( node == null ) {
+                            throw  new IOException("Path '"+ ref +"' is not set in the json file.");
+                        }
+                    }
+                }
+                if( node.isContainerNode() ) {
+                    throw new IOException("Path '"+ ref +"' is not a value in the json file.");
+                }
+                String textValue = node.asText();
+                rc = textValue.getBytes("UTF-8");
+            } else {
+                throw new IOException("Do not know how to handle path fragments for path: "+path);
+            }
+        }
+        return rc;
+    }
+
+
+    /**
+     * Loads a zoo keeper URL content using the provided ZooKeeper client.
+     */
+    public static byte[] loadURL(CuratorFramework curator, String url) throws Exception {
+        URI uri = new URI(url);
+        String ref = uri.getFragment();
+        String path = uri.getSchemeSpecificPart();
+        path = path.trim();
+        if( !path.startsWith("/") ) {
+            path = ZkPath.CONTAINER.getPath(path);
+        }
+
+        byte rc [] = curator.getData().forPath(path);
         if( ref!=null ) {
             if( path.endsWith(".properties") ) {
                 Properties properties = new Properties();

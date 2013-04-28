@@ -63,7 +63,7 @@ public class EnsembleRemove extends EnsembleCommandSupport {
                 CreateEnsembleOptions options = CreateEnsembleOptions.build().zookeeperPassword(zookeeperPassword);
                 service.removeFromCluster(containers, options);
             }
-            System.out.println("Updated Zookeeper connection string: "+ service.getZooKeeperUrl());
+            System.out.println("Updated Zookeeper connection string: "+ fabricService.getZookeeperUrl());
         }
         return null;
     }

@@ -19,11 +19,6 @@ package org.fusesource.fabric.jaas;
 import org.apache.karaf.jaas.modules.BackingEngine;
 import org.apache.karaf.jaas.modules.BackingEngineFactory;
 import org.apache.karaf.jaas.modules.encryption.EncryptionSupport;
-import org.apache.karaf.jaas.modules.properties.PropertiesBackingEngine;
-import org.fusesource.fabric.api.FabricService;
-import org.fusesource.fabric.service.FabricServiceImpl;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,11 +26,9 @@ import java.util.Map;
 
 public class ZookeeperBackingEngineFactory implements BackingEngineFactory {
 
-    protected BundleContext bundleContext;
-
-    protected FabricService service;
-
     private static final transient Logger LOGGER = LoggerFactory.getLogger(ZookeeperBackingEngineFactory.class);
+
+    private ZookeeperProperties users;
 
     @Override
     public String getModuleClass() {
@@ -45,20 +38,8 @@ public class ZookeeperBackingEngineFactory implements BackingEngineFactory {
     @Override
     public BackingEngine build(Map options) {
         ZookeeperBackingEngine engine = null;
-        this.bundleContext = (BundleContext) options.get(BundleContext.class.getName());
         EncryptionSupport encryptionSupport = new BasicEncryptionSupport(options);
-        if (bundleContext != null) {
-            ServiceReference ref = bundleContext.getServiceReference(FabricService.class.getName());
-            service = (FabricServiceImpl) bundleContext.getService(ref);
-            encryptionSupport = new EncryptionSupport(options);
-        }
-        String path = (String)options.get("path");
-        if (path == null) {
-            path = ZookeeperBackingEngine.USERS_NODE;
-        }
         try {
-            ZookeeperProperties users = new ZookeeperProperties(((FabricServiceImpl)service).getZooKeeper(), path);
-
             engine = new ZookeeperBackingEngine(users, encryptionSupport);
         } catch (Exception e) {
             LOGGER.warn("Cannot initialize engine", e);
@@ -67,8 +48,11 @@ public class ZookeeperBackingEngineFactory implements BackingEngineFactory {
         }
     }
 
-    public void setService(FabricService service) {
-        this.service = service;
+    public ZookeeperProperties getUsers() {
+        return users;
+    }
 
+    public void setUsers(ZookeeperProperties users) {
+        this.users = users;
     }
 }

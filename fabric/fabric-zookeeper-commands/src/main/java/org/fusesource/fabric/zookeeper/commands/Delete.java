@@ -16,10 +16,10 @@
  */
 package org.fusesource.fabric.zookeeper.commands;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
-import org.fusesource.fabric.zookeeper.IZKClient;
 
 @Command(name = "delete", scope = "zk", description = "Delete the specified znode", detailedDescription = "classpath:delete.txt")
 public class Delete extends ZooKeeperCommandSupport {
@@ -34,14 +34,14 @@ public class Delete extends ZooKeeperCommandSupport {
     String path;
 
     @Override
-    protected void doExecute(IZKClient zk) throws Exception {
+    protected void doExecute(CuratorFramework curator) throws Exception {
         if (recursive) {
             if (version >= 0) {
                 throw new UnsupportedOperationException("Unable to delete a version recursively");
             }
-            zk.deleteWithChildren(path);
+            curator.delete().forPath(path);
         } else {
-            zk.delete(path, version);
+            curator.delete().withVersion(version).forPath(path);
         }
     }
 }

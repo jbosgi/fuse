@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.jms.ConnectionFactory;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.bridge.MessageConverter;
 import org.fusesource.fabric.bridge.model.BridgeDestinationsConfig;
@@ -33,7 +34,6 @@ import org.fusesource.fabric.bridge.model.BridgedDestination;
 import org.fusesource.fabric.bridge.model.BrokerConfig;
 import org.fusesource.fabric.bridge.model.DispatchPolicy;
 import org.fusesource.fabric.bridge.zk.model.ZkBridgeDestinationsConfigFactory;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
@@ -61,7 +61,7 @@ public abstract class AbstractZkManagedServiceFactory implements ManagedServiceF
 
     protected final Logger LOG = LoggerFactory.getLogger(getClass());
 
-    private IZKClient zooKeeper;
+    private CuratorFramework curator;
 
     private FabricService fabricService;
 
@@ -70,8 +70,8 @@ public abstract class AbstractZkManagedServiceFactory implements ManagedServiceF
     protected Map<String, List<ServiceReference>> serviceReferenceMap = new ConcurrentHashMap<String, List<ServiceReference>>();
 
     public final void init() throws Exception {
-        if (zooKeeper == null) {
-            throw new IllegalArgumentException("Property zooKeeper must be set!");
+        if (curator == null) {
+            throw new IllegalArgumentException("Property curator must be set!");
         }
         if (fabricService == null) {
             throw new IllegalArgumentException("Property fabricService must be set!");
@@ -271,12 +271,12 @@ public abstract class AbstractZkManagedServiceFactory implements ManagedServiceF
             new OsgiApplicationContextAdapter(pid, this));
     }
 
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 
     public final FabricService getFabricService() {

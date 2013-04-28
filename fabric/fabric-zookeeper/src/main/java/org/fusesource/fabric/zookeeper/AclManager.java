@@ -14,26 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.internal.locks;
+package org.fusesource.fabric.zookeeper;
 
-import java.util.concurrent.atomic.AtomicInteger;
+public interface ACLManager {
 
-public class LockData {
-
-    private final Thread thread;
-    private final String lockPath;
-    private final AtomicInteger count = new AtomicInteger(1);
-
-    public LockData(Thread thread, String lockPath) {
-        this.thread = thread;
-        this.lockPath = lockPath;
-    }
-
-    public String getLockPath() {
-        return lockPath;
-    }
-
-    public AtomicInteger getCount() {
-        return count;
-    }
+    void registarAcl(String path, String acl);
+    void unregisterAcl(String path);
+    void fixAcl(String path, boolean recursive) throws Exception;
 }

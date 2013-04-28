@@ -189,7 +189,7 @@ class ComputeServiceResource(self: ComputeService) extends BaseResource {
     val provider_id = context.getProviderMetadata.getId
 
     try {
-      Services.zoo_keeper.deleteWithChildren(ZkPath.CLOUD_SERVICE.getPath(id))
+      Services.curator.delete.forPath(ZkPath.CLOUD_SERVICE.getPath(id))
     } catch {
       case _ => // Ignore
     }

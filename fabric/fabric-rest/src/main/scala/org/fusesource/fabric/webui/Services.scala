@@ -16,12 +16,10 @@
 package org.fusesource.fabric.webui
 
 import jclouds.ComputeServiceListener
-import org.fusesource.fabric.zookeeper.IZKClient
 import org.fusesource.fabric.service.ContainerTemplate
 import java.util.concurrent.ConcurrentHashMap
 import org.osgi.service.cm.{ConfigurationAdmin, Configuration}
 import org.osgi.framework.FrameworkUtil
-import system.Principal
 import org.slf4j.{Logger, LoggerFactory}
 import java.lang.ExceptionInInitializerError
 import org.fusesource.fabric.api.{ZooKeeperClusterService, Container, FabricService}
@@ -29,10 +27,10 @@ import java.io.File
 import org.jclouds.providers.Providers
 import org.jclouds.apis.Apis
 import scala.collection.JavaConverters._
-import sun.management.resources.agent
 import javax.servlet.http.{HttpSession, HttpServletRequest}
 import javax.ws.rs.WebApplicationException
 import javax.ws.rs.core.Response.Status._
+import org.apache.curator.framework.CuratorFramework
 
 class Services {
 
@@ -48,7 +46,7 @@ class Services {
 
   def setRealm(realm:String) = _realm = realm
 
-  def setZooKeeper(service: IZKClient) = _zoo_keeper = service
+  def setCurator(service: CuratorFramework) = _curator = service
 
   def setFabricService(service: FabricService) = _fabric_service = service
 
@@ -110,7 +108,7 @@ object Services {
   protected var _fabric_service: FabricService = _
   protected var _zoo_keeper_cluster_service: ZooKeeperClusterService = _
   protected var _config_admin: ConfigurationAdmin = _
-  protected var _zoo_keeper: IZKClient = _
+  protected var _curator: CuratorFramework = _
   protected var _compute_service_listener: ComputeServiceListener = _
   protected var _tempDir: String = _
   protected var _patchDir: String = _
@@ -126,7 +124,7 @@ object Services {
 
   def zk_cluster_service = _zoo_keeper_cluster_service
 
-  def zoo_keeper = _zoo_keeper
+  def curator = _curator
 
   def compute_services = _compute_service_listener.services
 

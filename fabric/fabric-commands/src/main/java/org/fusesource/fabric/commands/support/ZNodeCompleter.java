@@ -16,49 +16,50 @@
  */
 package org.fusesource.fabric.commands.support;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.karaf.shell.console.Completer;
+
 import java.util.List;
 
-import org.apache.karaf.shell.console.Completer;
-import org.fusesource.fabric.zookeeper.IZKClient;
-
 public class ZNodeCompleter implements Completer {
-    private IZKClient zk;
 
-    public ZNodeCompleter() {
-    }
+    private CuratorFramework curator;
 
-    public void setZooKeeper(IZKClient zk) {
-        this.zk = zk;
-    }
 
     @SuppressWarnings("unchecked")
     public int complete(String buffer, int cursor, List candidates) {
         try {
-            if (zk.isConnected()) {
-                // Guarantee that the final token is the one we're expanding
-                if (buffer == null) {
-                    candidates.add("/");
-                    return 1;
-                } else if (!buffer.startsWith("/")) {
-                    return 0;
-                }
-                buffer = buffer.substring(0, cursor);
-                String path = buffer;
-                int idx = path.lastIndexOf("/") + 1;
-                String prefix = path.substring(idx);
-                // Only the root path can end in a /, so strip it off every other prefix
-                String dir = idx == 1 ? "/" : path.substring(0, idx - 1);
-                List<String> children = zk.getChildren(dir, false);
-                for (String child : children) {
-                    if (child.startsWith(prefix)) {
-                        candidates.add(child);
-                    }
-                }
-                return candidates.size() == 0 ? buffer.length() : buffer.lastIndexOf("/") + 1;
+            // Guarantee that the final token is the one we're expanding
+            if (buffer == null) {
+                candidates.add("/");
+                return 1;
+            } else if (!buffer.startsWith("/")) {
+                return 0;
             }
+            buffer = buffer.substring(0, cursor);
+            String path = buffer;
+            int idx = path.lastIndexOf("/") + 1;
+            String prefix = path.substring(idx);
+            // Only the root path can end in a /, so strip it off every other prefix
+            String dir = idx == 1 ? "/" : path.substring(0, idx - 1);
+            List<String> children = curator.getChildren().forPath(dir);
+            for (String child : children) {
+                if (child.startsWith(prefix)) {
+                    candidates.add(child);
+                }
+            }
+            return candidates.size() == 0 ? buffer.length() : buffer.lastIndexOf("/") + 1;
         } catch (Exception e) {
             // Ignore
         }
         return 0;
+    }
+
+    public CuratorFramework getCurator() {
+        return curator;
+    }
+
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 }

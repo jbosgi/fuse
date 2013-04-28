@@ -16,6 +16,25 @@
  */
 package org.fusesource.mq.fabric;
 
+import org.apache.activemq.command.DiscoveryEvent;
+import org.apache.activemq.transport.discovery.DiscoveryAgent;
+import org.apache.activemq.transport.discovery.DiscoveryListener;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.fusesource.fabric.groups.ChangeListener;
+import org.fusesource.fabric.groups.ClusteredSingleton;
+import org.fusesource.fabric.groups.Group;
+import org.fusesource.fabric.groups.NodeState;
+import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
+import org.osgi.util.tracker.ServiceTracker;
+import org.osgi.util.tracker.ServiceTrackerCustomizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,32 +44,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.activemq.command.DiscoveryEvent;
-import org.apache.activemq.transport.discovery.DiscoveryAgent;
-import org.apache.activemq.transport.discovery.DiscoveryListener;
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.fusesource.fabric.groups.ChangeListener;
-import org.fusesource.fabric.groups.ClusteredSingleton;
-import org.fusesource.fabric.groups.Group;
-import org.fusesource.fabric.groups.NodeState;
-import org.fusesource.fabric.groups.ZooKeeperGroupFactory;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.internal.ZKClient;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
-import org.linkedin.util.clock.Timespan;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-import org.osgi.framework.ServiceReference;
-import org.osgi.util.tracker.ServiceTracker;
-import org.osgi.util.tracker.ServiceTrackerCustomizer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.getSubstitutedData;
 
 public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCustomizer {
     
     private static final Logger LOG = LoggerFactory.getLogger(FabricDiscoveryAgent.class);
 
-    private IZKClient zkClient;
+    private CuratorFramework curator;
     private boolean managedZkClient;
 
     private Group group;
@@ -83,8 +83,8 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
 
     @Override
     public Object addingService(ServiceReference serviceReference) {
-        zkClient = (IZKClient) context.getService(serviceReference);
-        return zkClient;
+        curator = (CuratorFramework) context.getService(serviceReference);
+        return curator;
     }
 
     @Override
@@ -121,7 +121,7 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
     public FabricDiscoveryAgent() {
         if (FrameworkUtil.getBundle(getClass()) != null) {
             context = FrameworkUtil.getBundle(getClass()).getBundleContext();
-            tracker = new ServiceTracker(context, IZKClient.class.getName(), this);
+            tracker = new ServiceTracker(context, CuratorFramework.class.getName(), this);
             tracker.open();
         }
 
@@ -242,19 +242,21 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
         if( startCounter.addAndGet(1)==1 ) {
             running.set(true);
 
-            if (zkClient == null) {
-                LOG.info("Using local ZKClient");
+            if (curator == null) {
+                LOG.info("Using local Curator");
                 managedZkClient = true;
-                ZKClient client = new ZKClient(System.getProperty("zookeeper.url", "localhost:2181"), Timespan.parse("10s"), null);
-                client.setPassword(System.getProperty("zookeeper.password", "admin"));
+                CuratorFramework client = CuratorFrameworkFactory.builder()
+                                                                 .connectString(System.getProperty("zookeeper.url", "localhost:2181"))
+                                                                 .authorization("digest", ("fabric:" + System.getProperty("zookeeper.password", "admin")).getBytes("UTF-8"))
+                                                                 .connectionTimeoutMs(10000).build();
                 client.start();
-                client.waitForConnected();
-                zkClient = client;
+                client.getZookeeperClient().blockUntilConnectedOrTimedOut();
+                curator = client;
             } else {
                 managedZkClient = false;
             }
 
-            group = ZooKeeperGroupFactory.create(zkClient, "/fabric/registry/clusters/fusemq/" + groupName);
+            group = ZooKeeperGroupFactory.create(curator, "/fabric/registry/clusters/fusemq/" + groupName);
             singleton.start(group);
             if( id!=null ) {
                 singleton.join(createState());
@@ -272,11 +274,11 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
             }
             if( managedZkClient ) {
                 try {
-                    zkClient.close();
+                    curator.close();
                 } catch (Throwable ignore) {
                     // Most likely a ServiceUnavailableException: The Blueprint container is being or has been destroyed
                 }
-                zkClient = null;
+                curator = null;
             }
         }
         if (tracker != null) {
@@ -296,7 +298,7 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
 
                     String resolved = service;
                     try {
-                        resolved = ZooKeeperUtils.getSubstitutedData(zkClient, service);
+                        resolved = getSubstitutedData(curator, service);
                     } catch (Exception e) {
                         // ignore, we'll use unresolved value
                     }
@@ -352,12 +354,12 @@ public class FabricDiscoveryAgent implements DiscoveryAgent, ServiceTrackerCusto
         updateClusterState();
     }
 
-    public IZKClient getZkClient() {
-        return zkClient;
+    public CuratorFramework getCurator() {
+        return curator;
     }
 
-    public void setZkClient(IZKClient zkClient) {
-        this.zkClient = zkClient;
+    public void setCurator(CuratorFramework curator) {
+        this.curator = curator;
     }
 
     public ClusteredSingleton<ActiveMQNode> getSingleton() {

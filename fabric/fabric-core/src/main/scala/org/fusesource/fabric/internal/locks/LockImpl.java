@@ -16,19 +16,12 @@
  */
 package org.fusesource.fabric.internal.locks;
 
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.fusesource.fabric.api.Lock;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 public class LockImpl implements Lock {
@@ -36,136 +29,39 @@ public class LockImpl implements Lock {
     private static final Logger LOGGER = LoggerFactory.getLogger(LockImpl.class);
 
     private final String path;
-    private final IZKClient zooKeeper;
-    private final ConcurrentMap<Thread, LockData> threadLocks = new ConcurrentHashMap<Thread, LockData>();
+    private final CuratorFramework curator;
+    private final InterProcessMutex mutex;
 
-    private final Watcher watcher = new Watcher() {
-        @Override
-        public void process(WatchedEvent event) {
-            doNotifyAll();
-        }
-    };
 
     /**
      * Constructor
      *
-     * @param zooKeeper
+     * @param curator
      * @param path
      */
-    protected LockImpl(IZKClient zooKeeper, String path) {
+    protected LockImpl(CuratorFramework curator, String path) {
         this.path = path;
-        this.zooKeeper = zooKeeper;
+        this.curator = curator;
+        this.mutex = new InterProcessMutex(curator, path);
+
     }
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) {
-        long waitFor = unit.toMillis(time);
-        long start = System.currentTimeMillis();
-        LockData lockData;
-        String lockPath = null;
         try {
-            ZooKeeperUtils.createDefault(zooKeeper, path, "");
-            Thread current = Thread.currentThread();
-
-            lockData = threadLocks.get(current);
-
-            if (lockData == null) {
-                lockPath = createLockNode(path);
-                zooKeeper.setData(lockPath, System.getProperty("karaf.name") + "/" + current.getName());
-                lockData = new LockData(current, lockPath);
-                threadLocks.put(current, lockData);
-            } else {
-                lockData.getCount().incrementAndGet();
-                return true;
-            }
-
-            while (start + waitFor >= System.currentTimeMillis()) {
-                List<String> children = zooKeeper.getChildren(path, watcher);
-                String id = stripPath(lockData.getLockPath());
-                if (hasLock(id, children)) {
-                    return true;
-                } else {
-                    synchronized (this) {
-                        wait(start + waitFor - System.currentTimeMillis());
-                    }
-                }
-            }
-            threadLocks.remove(current);
-            deleteLockNode(lockPath);
-            return false;
-        } catch (Exception ex) {
-            LOGGER.warn("Error while trying to acquire lock on: {}.", path, ex);
-            deleteLockNode(lockPath);
-            return false;
+            mutex.acquire(time, unit);
+            return true;
+        } catch (Exception e) {
+           return false;
         }
-
     }
 
     @Override
     public void unlock() {
         try {
-            Thread current = Thread.currentThread();
-            LockData lockData = threadLocks.get(current);
-            if (lockData != null && lockData.getCount().decrementAndGet() <= 0) {
-                threadLocks.remove(current);
-                if (zooKeeper.exists(lockData.getLockPath()) != null) {
-                    zooKeeper.delete(lockData.getLockPath());
-                }
-            }
+            mutex.release();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            //release
         }
-    }
-
-    private String stripPath(String node) {
-        if (node.contains("/")) {
-            return node.substring(node.lastIndexOf("/") + 1);
-        } else {
-            return node;
-        }
-    }
-
-    private String createLockNode(String path) {
-        try {
-            return zooKeeper.create(ZkPath.LOCK.getPath(path), CreateMode.EPHEMERAL_SEQUENTIAL);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void deleteLockNode(String path) {
-        try {
-            zooKeeper.delete(path);
-        } catch (Exception e) {
-            //ignore
-        }
-    }
-
-    /**
-     * Returns true if the specified id is the lowest from all candidates.
-     *
-     * @param id
-     * @param allCandidates
-     * @return
-     */
-    private static boolean hasLock(String id, List<String> allCandidates) {
-        if (allCandidates == null || allCandidates.size() == 1) {
-            return true;
-        }
-        long our = Long.parseLong(id);
-        for (String child : allCandidates) {
-            long their = Long.parseLong(child);
-            if (their < our) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Notifies all.
-     */
-    private synchronized void doNotifyAll() {
-        notifyAll();
     }
 }

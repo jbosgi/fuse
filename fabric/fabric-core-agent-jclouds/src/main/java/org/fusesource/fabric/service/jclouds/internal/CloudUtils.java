@@ -17,24 +17,27 @@
 
 package org.fusesource.fabric.service.jclouds.internal;
 
-import java.io.IOException;
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
+import org.apache.curator.framework.CuratorFramework;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.karaf.core.Constants;
-import org.jclouds.karaf.services.ServiceFactorySupport;
-import org.fusesource.fabric.zookeeper.IZKClient;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import static org.fusesource.fabric.zookeeper.ZkPath.CLOUD_SERVICE;
+import static org.fusesource.fabric.zookeeper.ZkPath.CLOUD_SERVICE_PROPERTY;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.createDefault;
+import static org.fusesource.fabric.zookeeper.utils.CuratorUtils.set;
 
 public class CloudUtils {
 
@@ -68,7 +71,7 @@ public class CloudUtils {
         return providerOptions;
     }
 
-    public static void registerProvider(final IZKClient zooKeeper, final ConfigurationAdmin configurationAdmin, final String name, final String provider, final String identity, final String credential, final Map<String, String> props) throws Exception {
+    public static void registerProvider(final CuratorFramework curator, final ConfigurationAdmin configurationAdmin, final String name, final String provider, final String identity, final String credential, final Map<String, String> props) throws Exception {
         Runnable registrationTask = new Runnable() {
             @Override
             public void run() {
@@ -99,23 +102,22 @@ public class CloudUtils {
 
                         configuration.update(dictionary);
 
-                        if (zooKeeper.isConnected()) {
-                            if (zooKeeper.exists(ZkPath.CLOUD_SERVICE.getPath(name)) == null) {
-                                ZooKeeperUtils.create(zooKeeper, ZkPath.CLOUD_SERVICE.getPath(name));
-                            }
+                        if (curator.getZookeeperClient().isConnected()) {
+                            createDefault(curator, CLOUD_SERVICE.getPath(name), "");
+
 							Enumeration keys = dictionary.keys();
 							while (keys.hasMoreElements()) {
 								Object key = keys.nextElement();
 								Object value = dictionary.get(key);
 								if (!key.equals("service.pid") && !key.equals("service.factoryPid")) {
-									ZooKeeperUtils.set(zooKeeper, ZkPath.CLOUD_SERVICE_PROPERTY.getPath(name, String.valueOf(key)), String.valueOf(value));
+									set(curator, CLOUD_SERVICE_PROPERTY.getPath(name, String.valueOf(key)), String.valueOf(value));
 								}
 							}
 							for (Map.Entry<String, String> entry : props.entrySet()) {
                                 String key = entry.getKey();
                                 String value = entry.getValue();
                                 if (!key.equals("service.pid") && !key.equals("service.factoryPid")) {
-                                    ZooKeeperUtils.set(zooKeeper, ZkPath.CLOUD_SERVICE_PROPERTY.getPath(name, key), value);
+                                    set(curator, CLOUD_SERVICE_PROPERTY.getPath(name, key), value);
                                 }
                             }
                         } else {
@@ -131,7 +133,7 @@ public class CloudUtils {
     }
 
 
-    public static void registerApi(final IZKClient zooKeeper, final ConfigurationAdmin configurationAdmin, final String name, final String api, final String endpoint, final String identity, final String credential, final Map<String, String> props) throws Exception {
+    public static void registerApi(final CuratorFramework curator, final ConfigurationAdmin configurationAdmin, final String name, final String api, final String endpoint, final String identity, final String credential, final Map<String, String> props) throws Exception {
         Runnable registrationTask = new Runnable() {
             @Override
             public void run() {
@@ -163,17 +165,15 @@ public class CloudUtils {
 
                         configuration.update(dictionary);
 
-                        if (zooKeeper.isConnected()) {
-                            if (zooKeeper.exists(ZkPath.CLOUD_SERVICE.getPath(name)) == null) {
-                                ZooKeeperUtils.create(zooKeeper, ZkPath.CLOUD_SERVICE.getPath(name));
-                            }
+                        if (curator.getZookeeperClient().isConnected()) {
+                            createDefault(curator, CLOUD_SERVICE.getPath(name), "");
 
 							Enumeration keys = dictionary.keys();
 							while (keys.hasMoreElements()) {
 								Object key = keys.nextElement();
 								Object value = dictionary.get(key);
 								if (!key.equals("service.pid") && !key.equals("service.factoryPid")) {
-									ZooKeeperUtils.set(zooKeeper, ZkPath.CLOUD_SERVICE_PROPERTY.getPath(name, String.valueOf(key)), String.valueOf(value));
+									set(curator, CLOUD_SERVICE_PROPERTY.getPath(name, String.valueOf(key)), String.valueOf(value));
 								}
 							}
 
@@ -181,7 +181,7 @@ public class CloudUtils {
                                 String key = entry.getKey();
                                 String value = entry.getValue();
                                 if (!key.equals("service.pid") && !key.equals("service.factoryPid")) {
-                                    ZooKeeperUtils.set(zooKeeper, ZkPath.CLOUD_SERVICE_PROPERTY.getPath(name, key), value);
+                                    set(curator, CLOUD_SERVICE_PROPERTY.getPath(name, key), value);
                                 }
                             }
                         } else {
