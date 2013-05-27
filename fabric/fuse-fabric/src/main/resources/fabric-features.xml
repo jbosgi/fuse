@@ -492,6 +492,11 @@
         <bundle>mvn:org.fusesource.fabric/fabric-git-hawtio/${project.version}</bundle>
     </feature>
 
+    <feature name="fabric-partition" version="${project.version}" resolver="(obr)">
+        <feature version="${project.version}">fabric-groups</feature>
+        <bundle>mvn:org.fusesource.fabric/fabric-partition/${project.version}</bundle>
+    </feature>
+
     <feature name="jolokia" version="${project.version}" resolver="(obr)">
         <feature>war</feature>
         <bundle>war:mvn:org.jolokia/jolokia-war/${jolokia-version}/war?WebappContext=/jolokia&amp;Bundle-SymbolicName=org.jolokia&amp;Bundle-Version=${jolokia-version}&amp;DynamicImport-Package=*&amp;Bundle-Name=jolokia&amp;Bundle-ClassPath=.,WEB-INF/classes&amp;Web-ContextPath=/jolokia</bundle>
