@@ -34,6 +34,10 @@
         <fuse.osgi.export>
             org.fusesource.fabric.camel
         </fuse.osgi.export>
+        <fuse.osgi.impot>
+            org.springframework.osgi.context.support;version=[1.2,2),
+            *
+        </fuse.osgi.impot>
         <fuse.osgi.activator>org.fusesource.fabric.camel.Activator</fuse.osgi.activator>
     </properties>
 
@@ -48,6 +52,10 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.fusesource.fabric</groupId>
+            <artifactId>fabric-partition</artifactId>
         </dependency>
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
@@ -68,8 +76,14 @@
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-spring</artifactId>
             <version>${camel-version}</version>
-            <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.osgi</groupId>
+            <artifactId>spring-osgi-core</artifactId>
+            <version>${spring-osgi-version}</version>
+        </dependency>
+
 
         <!-- testing -->
         <!--

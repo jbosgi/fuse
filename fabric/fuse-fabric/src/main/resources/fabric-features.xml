@@ -197,7 +197,9 @@
 
     <feature name="fabric-camel" version="${project.version}" resolver="(obr)">
         <feature version="[2.7,3.0)">camel</feature>
+        <feature>spring-dm</feature>
         <feature>fabric-groups</feature>
+        <feature>fabric-partition</feature>
         <bundle>mvn:org.fusesource.fabric/fabric-camel/${project.version}</bundle>
     </feature>
 

@@ -92,11 +92,11 @@ public class TaskManagerFactory implements ManagedServiceFactory {
         if (!balancingPolicies.containsKey(policyType)) {
             waitingOnBalancing.put(policyType, s);
             pendingPids.put(s, properties);
-            LOGGER.debug("Policy type {} not found. Will resume: {} when policy is made available.", policyType, s);
+            LOGGER.warn("Policy type {} not found. Will resume: {} when policy is made available.", policyType, s);
         } else if (!partitionListeners.containsKey(workerType)) {
             waitingOnListener.put(workerType, s);
             pendingPids.put(s, properties);
-            LOGGER.debug("Worker type {} not found. Will resume: {} when worker type is made available.", workerType, s);
+            LOGGER.warn("Worker type {} not found. Will resume: {} when worker type is made available.", workerType, s);
         } else {
             BalancingPolicy balancingPolicy = balancingPolicies.get(policyType);
             PartitionListener partitionListener = partitionListeners.get(workerType);
