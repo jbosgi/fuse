@@ -17,10 +17,10 @@
 
 package org.fusesource.fabric.camel.dslio
 
-import org.apache.camel.test.CamelTestSupport
 import org.apache.camel.builder.RouteBuilder
 import org.junit.Test
 import java.io.{PrintWriter, StringWriter}
+import org.apache.camel.test.junit4.CamelTestSupport
 
 class RouteTransformTest extends CamelTestSupport {
 
