@@ -25,12 +25,14 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectEndpoint;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.impl.DefaultExchange;
-import org.apache.camel.test.CamelTestSupport;
+import org.apache.camel.test.junit4.CamelTestSupport;
 import org.fusesource.eca.TestStat;
+import org.junit.Test;
 
 public class StatisticsComponentTest extends CamelTestSupport {
     final int COUNT = 1000;
 
+    @Test
     public void testStatsBatchUpdateWireTap() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -56,6 +58,7 @@ public class StatisticsComponentTest extends CamelTestSupport {
         mock.assertIsSatisfied(context);
     }
 
+    @Test
     public void testStatsWireTap() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -86,6 +89,7 @@ public class StatisticsComponentTest extends CamelTestSupport {
         }
     }
 
+    @Test
     public void testStatsProcessor() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -116,6 +120,7 @@ public class StatisticsComponentTest extends CamelTestSupport {
         }
     }
 
+    @Test
     public void testStatsQuery() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -149,6 +154,7 @@ public class StatisticsComponentTest extends CamelTestSupport {
         }
     }
 
+    @Test
     public void testStatsType() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);

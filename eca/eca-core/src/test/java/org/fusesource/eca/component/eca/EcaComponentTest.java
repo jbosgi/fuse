@@ -23,8 +23,9 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectEndpoint;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.impl.DefaultExchange;
-import org.apache.camel.test.CamelTestSupport;
+import org.apache.camel.test.junit4.CamelTestSupport;
 import org.fusesource.eca.TestStat;
+import org.junit.Test;
 
 public class EcaComponentTest extends CamelTestSupport {
     final int COUNT = 1000;
@@ -34,7 +35,7 @@ public class EcaComponentTest extends CamelTestSupport {
         return false;
     }
 
-
+    @Test
     public void testSimpleRouteEvaluationCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -70,6 +71,7 @@ public class EcaComponentTest extends CamelTestSupport {
         }
     }
 
+    @Test
     public void testSimpleEndpointEvaluationCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);

@@ -47,7 +47,7 @@ public class StatisticsComponent extends SedaComponent {
                     + maxConcurrentConsumers + " was " + consumers);
         }
 
-        StatisticsEndpoint answer = new StatisticsEndpoint(uri, this, getOrCreateQueue(uri, size), consumers);
+        StatisticsEndpoint answer = new StatisticsEndpoint(uri, this, getOrCreateQueue(uri, size).getQueue(), consumers);
         answer.configureProperties(parameters);
         return answer;
     }

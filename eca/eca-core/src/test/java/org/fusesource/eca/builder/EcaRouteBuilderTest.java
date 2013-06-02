@@ -23,9 +23,10 @@ import org.apache.camel.component.direct.DirectEndpoint;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.impl.DefaultExchange;
 import org.apache.camel.model.RouteDefinition;
-import org.apache.camel.test.CamelTestSupport;
+import org.apache.camel.test.junit4.CamelTestSupport;
 import org.fusesource.eca.TestBlob;
 import org.fusesource.eca.TestStat;
+import org.junit.Test;
 
 public class EcaRouteBuilderTest extends CamelTestSupport {
 
@@ -43,6 +44,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertNotSame(cep1, cep2);
     }
 
+    @Test
     public void testSimpleEndpointCep() throws Exception {
         final String testEndPointUri = "direct://foo2?synchronous=false";
         final DirectEndpoint de = new DirectEndpoint();
@@ -74,7 +76,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
-
+    @Test
     public void testSimpleCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -109,7 +111,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
-
+    @Test
     public void testSimpleAndCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -145,6 +147,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
+    @Test
     public void testSimpleOrCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -180,7 +183,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
-
+    @Test
     public void testSimpleAfterCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -216,6 +219,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
+    @Test
     public void testSimpleBeforeCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -251,6 +255,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
+    @Test
     public void testCorrelationCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -290,6 +295,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
+    @Test
     public void testSimpleNotCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
@@ -319,6 +325,7 @@ public class EcaRouteBuilderTest extends CamelTestSupport {
         assertMockEndpointsSatisfied();
     }
 
+    @Test
     public void testCompoundCep() throws Exception {
         final DirectEndpoint de = new DirectEndpoint();
         de.setCamelContext(context);
