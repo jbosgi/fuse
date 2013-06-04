@@ -314,6 +314,7 @@
         <module>stream</module>
         <module>examples</module>
         <module>esb</module>
+        <module>components</module>
     </modules>
 
     <build>
