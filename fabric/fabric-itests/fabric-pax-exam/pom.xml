@@ -39,31 +39,36 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fuse-fabric</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
             <type>zip</type>
         </dependency>
 
         <dependency>
             <groupId>org.jboss.amq</groupId>
             <artifactId>jboss-a-mq</artifactId>
-            <version>${project.version}</version>
+            <version>${fuse.version}</version>
             <type>zip</type>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.activemq</groupId>
+                    <artifactId>activemq-osgi</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Internal Dependencies -->
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-monitor</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-utils</artifactId>
-            <version>${project.version}</version>
+            <version>${fabric.version}</version>
             <scope>test</scope>
         </dependency>
-
 
         <!-- Jclouds Dependencies -->
         <dependency>
