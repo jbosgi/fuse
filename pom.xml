@@ -1585,6 +1585,7 @@
             <enabled>true</enabled>
           </releases>
         </repository>
+<!--
         <repository>
           <id>fusesource-nexus-staging</id>
           <name>FuseSource Community Release Repository</name>
@@ -1596,6 +1597,7 @@
             <enabled>true</enabled>
           </releases>
         </repository>
+-->
 
         <repository>
           <id>fusesource.m2-snapshot</id>
