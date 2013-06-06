@@ -56,6 +56,7 @@
             </exclusions>
         </dependency>
 
+
         <!-- Internal Dependencies -->
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
@@ -123,6 +124,11 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-linkedin-zookeeper</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.fusesource.fabric</groupId>
+            <artifactId>fabric-zookeeper</artifactId>
         </dependency>
 
         <dependency>
