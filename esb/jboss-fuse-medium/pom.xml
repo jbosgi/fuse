@@ -56,7 +56,7 @@
                                 <descriptor>mvn:org.jboss.fuse/jboss-fuse/${project.version}/xml/features</descriptor>
 
                                 <!-- FuseSource only : Fabric -->
-                                <descriptor>mvn:org.fusesource.patch/patch-features/${project.version}/xml/features</descriptor>
+                                <descriptor>mvn:org.fusesource.patch/patch-features/${fabric.version}/xml/features</descriptor>
                                 <descriptor>mvn:org.fusesource.fabric/fuse-fabric/${fabric.version}/xml/features</descriptor>
                             </descriptors>
                             <features>
