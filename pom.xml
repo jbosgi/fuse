@@ -99,11 +99,8 @@
 
         <fabric.version>7.3.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.1.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>024</perfectus-build>
-        <full-perfectus-build>60${perfectus-build}</full-perfectus-build>
         <perfectus-build>0001</perfectus-build>
         <full-perfectus-build>61${perfectus-build}</full-perfectus-build>
-
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
         <jmdns-version>3.4.1</jmdns-version>
@@ -156,7 +153,7 @@
         <hadoop-version>1.0.3</hadoop-version>
         <hawtbuf-version>1.9</hawtbuf-version>
         <hawtdispatch-version>1.12</hawtdispatch-version>
-        <hawtio-version>1.2-SNAPSHOT</hawtio-version>
+        <hawtio-version>1.2-M1</hawtio-version>
         <jackson-version>1.9.10</jackson-version>
         <jasypt-version>1.9.0</jasypt-version>
         <jaxb-api-version>2.1</jaxb-api-version>
