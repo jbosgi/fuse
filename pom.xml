@@ -101,10 +101,7 @@
         <fuse.version>6.1.0.redhat-SNAPSHOT</fuse.version>
         <perfectus-build>024</perfectus-build>
         <full-perfectus-build>60${perfectus-build}</full-perfectus-build>
--->
         <perfectus-build>0001</perfectus-build>
-<!--
--->
         <full-perfectus-build>61${perfectus-build}</full-perfectus-build>
 
 
@@ -148,7 +145,7 @@
         <drools-version>5.5.0.Final</drools-version>
         <equinox.version>3.7.1.R37x_v20110808-1106</equinox.version>
         <exec-maven-plugin-version>1.2.1</exec-maven-plugin-version>
-        <fabric-version>${project.version}</fabric-version>
+        <fabric-version>${fabric.version}</fabric-version>
         <felix-framework-version>4.0.3.redhat-${full-perfectus-build}</felix-framework-version>
         <felix-framework-security-version>2.0.1.redhat-${full-perfectus-build}</felix-framework-security-version>
         <felix-configadmin-version>1.4.0.redhat-${full-perfectus-build}</felix-configadmin-version>
