@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -99,7 +100,7 @@ public class ObrResolver {
         List<Requirement> reqs = new ArrayList<Requirement>();
         List<Resource> ress = new ArrayList<Resource>();
         List<Resource> deploy = new ArrayList<Resource>();
-        Map<Object, BundleInfo> infos = new HashMap<Object, BundleInfo>();
+        Map<Object, BundleInfo> infos = new IdentityHashMap<Object, BundleInfo>();
         for (Feature feature : features) {
             for (BundleInfo bundleInfo : feature.getBundles()) {
                 try {
