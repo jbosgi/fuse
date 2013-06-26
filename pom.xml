@@ -325,10 +325,12 @@
         <module>fab</module>
         <module>patch</module>
         <module>bai</module>
+				<!--
         <module>mq</module>
         <module>eca</module>
-        <module>stream</module>
         <module>esb</module>
+					-->
+        <module>stream</module>
         <module>examples</module>
     </modules>
 
