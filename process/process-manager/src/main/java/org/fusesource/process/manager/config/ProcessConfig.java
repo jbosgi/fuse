@@ -21,6 +21,9 @@ import org.fusesource.process.manager.support.command.CommandFailedException;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -28,7 +31,10 @@ import java.util.concurrent.Executor;
 /**
  * The configuration DTO stored as JSON so that the system can be restarted and remember how to run & control a managed process
  */
-public class ProcessConfig {
+public class ProcessConfig implements Serializable {
+
+    private static final long serialVersionUID = -2472076539312397232L;
+
     private String name = "<unknown>";
     private String launchScript;
     private String startCommand;
@@ -38,8 +44,11 @@ public class ProcessConfig {
     private String killCommand;
     private String configureCommand;
     private String pidFile;
-    private Map<String,String> environment;
-    private List<String> installCommands;
+    private final Map<String,String> environment = new HashMap<String, String>();
+    private final List<String> installCommands = new ArrayList<String>();
+
+    private String deployPath;
+    private String sharedLibraryPath;
 
     public String getName() {
         return name;
@@ -109,16 +118,8 @@ public class ProcessConfig {
         return environment;
     }
 
-    public void setEnvironment(Map<String, String> environment) {
-        this.environment = environment;
-    }
-
     public List<String> getInstallCommands() {
         return installCommands;
-    }
-
-    public void setInstallCommands(List<String> installCommands) {
-        this.installCommands = installCommands;
     }
 
     public String getConfigureCommand() {
@@ -127,6 +128,22 @@ public class ProcessConfig {
 
     public void setConfigureCommand(String configureCommand) {
         this.configureCommand = configureCommand;
+    }
+
+    public String getDeployPath() {
+        return deployPath;
+    }
+
+    public void setDeployPath(String deployPath) {
+        this.deployPath = deployPath;
+    }
+
+    public String getSharedLibraryPath() {
+        return sharedLibraryPath;
+    }
+
+    public void setSharedLibraryPath(String sharedLibraryPath) {
+        this.sharedLibraryPath = sharedLibraryPath;
     }
 
     public int runCommand(Executor executor, File baseDir, String... arguments) throws IOException, InterruptedException, CommandFailedException {

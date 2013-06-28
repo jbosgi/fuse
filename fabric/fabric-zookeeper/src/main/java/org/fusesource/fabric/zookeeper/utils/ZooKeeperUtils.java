@@ -19,13 +19,13 @@ package org.fusesource.fabric.zookeeper.utils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.TreeCache;
+import org.apache.curator.framework.recipes.cache.TreeData;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 import org.fusesource.fabric.zookeeper.ZkPath;
-import org.linkedin.zookeeper.client.ZKData;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -51,8 +51,9 @@ public final class ZooKeeperUtils {
 
     public static void copy(CuratorFramework source, CuratorFramework dest, String path) throws Exception {
         for (String child : source.getChildren().forPath(path)) {
-            child = path + "/" + child;
-            if (dest.checkExists().forPath(child) == null) {
+            child = ZKPaths.makePath(path, child);
+            Stat stat = source.checkExists().forPath(child);
+            if (stat.getEphemeralOwner() == 0 &&  dest.checkExists().forPath(child) == null) {
                 byte[] data = source.getData().forPath(child);
                 setData(dest, child, data);
                 copy(source, dest, child);
@@ -107,7 +108,7 @@ public final class ZooKeeperUtils {
             if (changed) {
                 sb.delete(0, sb.length());
                 for (String part : parts) {
-                    if (data.length() > 0) {
+                    if (sb.length() > 0) {
                         sb.append(" ");
                     }
                     sb.append(part);
@@ -122,13 +123,28 @@ public final class ZooKeeperUtils {
         return curator.getChildren().forPath(path);
     }
 
+    public static List<String> getChildren(TreeCache cache, String path) throws Exception {
+        return cache.getChildrenNames(path);
+    }
+
     public static List<String> getAllChildren(CuratorFramework curator, String path) throws Exception {
         List<String> children = getChildren(curator, path);
-        List<String> allChildren = new ArrayList();
+        List<String> allChildren = new ArrayList<String>();
         for (String child : children) {
             String fullPath = ZKPaths.makePath(path, child);
             allChildren.add(fullPath);
             allChildren.addAll(getAllChildren(curator, fullPath));
+        }
+        return allChildren;
+    }
+
+    public static List<String> getAllChildren(TreeCache cache, String path) throws Exception {
+        List<String> children = getChildren(cache, path);
+        List<String> allChildren = new ArrayList<String>();
+        for (String child : children) {
+            String fullPath = ZKPaths.makePath(path, child);
+            allChildren.add(fullPath);
+            allChildren.addAll(getAllChildren(cache, fullPath));
         }
         return allChildren;
     }

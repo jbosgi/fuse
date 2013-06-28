@@ -38,6 +38,7 @@ public interface DataStore {
     //
 
     void trackConfiguration(Runnable callback);
+    void unTrackConfiguration(Runnable callback);
 
     //
     // Container management
@@ -168,5 +169,10 @@ public interface DataStore {
 
     FabricRequirements getRequirements();
     void setRequirements(FabricRequirements requirements) throws IOException;
+
+    //Ensemble
+    String getClusterId();
+    List<String> getEnsembleContainers();
+
 
 }

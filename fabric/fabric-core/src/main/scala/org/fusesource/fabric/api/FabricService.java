@@ -33,6 +33,12 @@ public interface FabricService {
     void trackConfiguration(Runnable callback);
 
     /**
+     * Un-Track configuration changes.
+     * @param callback The Callback to ignore.
+     */
+    void unTrackConfiguration(Runnable callback);
+
+    /**
      * Gets the existing {@link Container}s.
      * @return An array of @{link Container}s
      */
@@ -44,6 +50,19 @@ public interface FabricService {
      * @return      The {@link Container}.
      */
     Container getContainer(String name);
+
+    public void startContainer(String containerId);
+
+    public void startContainer(final Container container);
+
+    public void stopContainer(String containerId);
+
+    public void stopContainer(final Container container);
+
+
+    public void destroyContainer(String containerId);
+
+    public void destroyContainer(Container container);
 
     /**
      * Creates one or more new {@link Container}s with the specified {@link CreateContainerOptions}.
@@ -192,6 +211,13 @@ public interface FabricService {
      * @return
      */
     PortService getPortService();
+
+
+    /**
+     * Get the {@link DataStore}
+      * @return
+     */
+    DataStore getDataStore();
 
     /**
      * Get the default JVM options used when creating containers

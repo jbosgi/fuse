@@ -17,11 +17,7 @@
 package org.fusesource.process.manager;
 
 import com.google.common.collect.ImmutableMap;
-import org.fusesource.process.manager.support.command.CommandFailedException;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.List;
 
 /**
@@ -36,13 +32,14 @@ public interface ProcessManager {
 
     /**
      * Installs a process with an optional URL of the controller JSON
+     * together with an optional install step
      */
-    Installation install(String url, URL controllerJson) throws Exception;
+    Installation install(InstallOptions parameters, InstallTask postInstall) throws Exception;
 
     /**
      * Installs an executable jar as a new managed process
      */
-    Installation installJar(JarInstallParameters parameters) throws Exception;
+    Installation installJar(InstallOptions parameters) throws Exception;
 
     ImmutableMap<Integer, Installation> listInstallationMap();
 }

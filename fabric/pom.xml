@@ -88,6 +88,13 @@
         <module>fabric-features-service</module>
         <module>fabric-jolokia</module>
         <module>fabric-web</module>
+        <module>fabric-webapp-agent</module>
+
+        <module>fabric-git</module>
+        <module>fabric-git-server</module>
+        <module>fabric-git-zkbridge</module>
+        <module>fabric-git-hawtio</module>
+        <module>fabric-partition</module>
 
         <module>fuse-fabric</module>
 
@@ -100,11 +107,6 @@
         <module>fmc-distro</module>
         -->
 
-        <module>fabric-git</module>
-        <module>fabric-git-server</module>
-        <module>fabric-git-zkbridge</module>
-        <module>fabric-git-hawtio</module>
-        <module>fabric-partition</module>
 
     </modules>
 
