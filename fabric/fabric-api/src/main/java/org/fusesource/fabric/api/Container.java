@@ -16,10 +16,6 @@
  */
 package org.fusesource.fabric.api;
 
-import org.fusesource.fabric.api.data.BundleInfo;
-import org.fusesource.fabric.api.data.ServiceInfo;
-import org.fusesource.fabric.service.ContainerTemplate;
-
 import java.util.List;
 
 public interface Container extends HasId {
@@ -53,6 +49,8 @@ public interface Container extends HasId {
 
     Profile[] getProfiles();
     void setProfiles(Profile[] profiles);
+    void addProfiles(Profile... profiles);
+    void removeProfiles(Profile... profiles);
 
     Profile getOverlayProfile();
 
@@ -113,9 +111,9 @@ public interface Container extends HasId {
 
     List<String> getJmxDomains();
 
-    BundleInfo[] getBundles(ContainerTemplate template);
+    //BundleInfo[] getBundles(ContainerTemplate template);
 
-    ServiceInfo[] getServices(ContainerTemplate template);
+    //ServiceInfo[] getServices(ContainerTemplate template);
 
     /**
      * Returns true if the initial provisioning of the container is complete so that we can connect to it

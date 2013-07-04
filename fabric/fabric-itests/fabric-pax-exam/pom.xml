@@ -57,6 +57,24 @@
             <version>${fabric.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.fusesource.fabric</groupId>
+            <artifactId>fabric-git</artifactId>
+            <version>${fabric.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.fusesource.fabric</groupId>
+            <artifactId>fabric-git-server</artifactId>
+            <version>${fabric.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.fusesource.fabric</groupId>
+            <artifactId>fabric-git-zkbridge</artifactId>
+            <version>${fabric.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Jclouds Dependencies -->
         <dependency>
@@ -89,9 +107,14 @@
 
         <!-- Fabric Dependencies  -->
         <dependency>
+          <groupId>org.fusesource.fabric</groupId>
+          <artifactId>fabric-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-core</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>

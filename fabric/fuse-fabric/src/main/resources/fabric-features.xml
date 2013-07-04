@@ -126,6 +126,7 @@
 
     <feature name="fabric-configadmin" version="${project.version}" resolver="(obr)">
         <feature>fabric-zookeeper</feature>
+        <bundle>mvn:org.fusesource.fabric/fabric-api/${project.version}</bundle>
         <bundle>mvn:org.fusesource.fabric/fabric-configadmin/${project.version}</bundle>
     </feature>
 
@@ -152,6 +153,7 @@
     </feature>
 
     <feature name="fabric-core" version="${project.version}" resolver="(obr)">
+        <bundle>mvn:org.fusesource.fabric/fabric-api/${project.version}</bundle>
         <feature version="${project.version}">fabric-zookeeper</feature>
         <bundle dependency="true">mvn:com.weiglewilczek.scala-lang-osgi/scala-library/${scala-osgi-version}</bundle>
         <bundle dependency="true">mvn:commons-collections/commons-collections/${commons-collections-version}</bundle>

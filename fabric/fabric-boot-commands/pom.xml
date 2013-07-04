@@ -70,6 +70,10 @@
         </dependency>
 
         <dependency>
+          <groupId>org.fusesource.fabric</groupId>
+          <artifactId>fabric-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-utils</artifactId>
         </dependency>
@@ -80,6 +84,10 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-linkedin-zookeeper</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.fusesource.fabric</groupId>
+          <artifactId>fabric-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
