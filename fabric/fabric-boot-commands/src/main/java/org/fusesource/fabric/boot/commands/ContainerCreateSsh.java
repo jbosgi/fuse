@@ -69,7 +69,7 @@ public class ContainerCreateSsh extends ContainerCreateSupport {
     @Argument(index = 0, required = true, description = "The name of the container to be created. When creating multiple containers it serves as a prefix")
     protected String name;
 	@Argument(index = 1, required = false, description = "The number of containers that should be created")
-	protected int number = 1;
+	protected int number = 0;
 
     @Override
     protected Object doExecute() throws Exception {
@@ -103,7 +103,7 @@ public class ContainerCreateSsh extends ContainerCreateSupport {
         .zookeeperPassword(zookeeperPassword)
         .withUser(newUser, newUserPassword , newUserRole)
         .version(version)
-        .profiles(profiles);
+        .profiles(getProfileNames());
 
 
         if (path != null && !path.isEmpty()) {
