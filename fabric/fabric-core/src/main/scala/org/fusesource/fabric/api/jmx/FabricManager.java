@@ -17,6 +17,7 @@
 package org.fusesource.fabric.api.jmx;
 
 import org.apache.commons.codec.binary.Base64;
+import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.fusesource.fabric.api.*;
 import org.fusesource.fabric.service.FabricServiceImpl;
@@ -144,27 +145,28 @@ public class FabricManager implements FabricManagerMBean {
             throw new RuntimeException("No providerType provided");
         }
 
-        CreateContainerOptions createContainerOptions = null;
+        CreateContainerBasicOptions.Builder builder = null;
 
         ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         if (providerType.equals("child")) {
-            createContainerOptions = mapper.convertValue(options, CreateContainerChildOptions.class);
-            createContainerOptions.setResolver(null);
+            builder = mapper.convertValue(options, CreateChildContainerOptions.Builder.class);
+            builder.resolver(null);
         } else if (providerType.equals("ssh")) {
-            createContainerOptions = mapper.convertValue(options, CreateSshContainerOptions.class);
+            builder = mapper.convertValue(options, CreateSshContainerOptions.Builder.class);
         } else if (providerType.equals("jclouds")) {
-            createContainerOptions = mapper.convertValue(options, CreateJCloudsContainerOptions.class);
+            builder = mapper.convertValue(options, CreateJCloudsContainerOptions.Builder.class);
         }
 
-        if (createContainerOptions == null) {
+        if (builder == null) {
             throw new RuntimeException("Unknown provider type : " + providerType);
         }
 
-        createContainerOptions.setZookeeperPassword(getFabricService().getZookeeperPassword());
-        createContainerOptions.setZookeeperUrl(getFabricService().getZookeeperUrl());
+        builder.zookeeperPassword(getFabricService().getZookeeperPassword());
+        builder.zookeeperUrl(getFabricService().getZookeeperUrl());
 
-        CreateContainerMetadata<?> metadatas[] = getFabricService().createContainers(createContainerOptions);
+        CreateContainerMetadata<?> metadatas[] = getFabricService().createContainers(builder.build());
 
         Map<String, String> rc = new HashMap<String, String>();
 
@@ -470,6 +472,10 @@ public class FabricManager implements FabricManagerMBean {
         return BeanUtils.convertVersionToMap(getFabricService(), getFabricService().getDefaultVersion(), BeanUtils.getFields(Version.class));
     }
 
+    @Override
+    public String getDefaultVersion() {
+        return getFabricService().getDefaultVersion().getId();
+    }
 
     @Override
     public FabricStatus fabricStatus() {
