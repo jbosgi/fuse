@@ -105,7 +105,8 @@
 				<!-- master has these values
         <fabric.version>${project.version}</fabric.version>
         <fuse.version>${project.version}</fuse.version>
-				-->
+-->
+        <perfectus-build>021</perfectus-build>
         <full-perfectus-build>610${perfectus-build}</full-perfectus-build>
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
@@ -151,7 +152,7 @@
         <drools-camel-groupId>org.kie</drools-camel-groupId>
         <drools-spring-artifactId>kie-spring</drools-spring-artifactId>
         <drools-spring-groupId>org.kie</drools-spring-groupId>
-        <drools-version>6.0.0.Beta4</drools-version>
+        <drools-version>6.0.0.Beta5</drools-version>
 <!--
         <drools-camel-artifactId>drools-camel</drools-camel-artifactId>
         <drools-camel-groupId>org.drools</drools-camel-groupId>
@@ -216,10 +217,10 @@
         <mongo-java-driver-version>2.7.3</mongo-java-driver-version>
         <mvel-version>2.1.4.Final</mvel-version>
         <mvnplugins-version>1.14</mvnplugins-version>
-        <ops4j-base.version>1.2.2</ops4j-base.version>
-        <ops4j-pax-swissbox-bnd.version>1.3.2</ops4j-pax-swissbox-bnd.version>
-        <ops4j-pax-swissbox-property.version>1.2.0</ops4j-pax-swissbox-property.version>
-        <ops4j-pax-swissbox-optional-jcl.version>1.3.1</ops4j-pax-swissbox-optional-jcl.version>
+        <ops4j-base.version>1.4.0</ops4j-base.version>
+        <ops4j-pax-swissbox-bnd.version>1.6.0</ops4j-pax-swissbox-bnd.version>
+        <ops4j-pax-swissbox-property.version>1.6.0</ops4j-pax-swissbox-property.version>
+        <ops4j-pax-swissbox-optional-jcl.version>1.6.0</ops4j-pax-swissbox-optional-jcl.version>
         <ops4j-pax-web-version>3.0.1</ops4j-pax-web-version>
         <org.apache.servicemix.bundles.jzlib.version>1.0.7_1</org.apache.servicemix.bundles.jzlib.version>
         <osgi-version>5.0.0</osgi-version>
@@ -1587,7 +1588,7 @@
     <profile>
       <id>snapshots</id>
       <properties>
-        <perfectus-build>020</perfectus-build>
+        <perfectus-build>021</perfectus-build>
         <activemq-version>5.8.0.fuse-72-${perfectus-build}</activemq-version>
         <aries.blueprint.version>1.0.1.fuse-72-${perfectus-build}</aries.blueprint.version>
         <aries.jmx.version>1.0.1.fuse-72-${perfectus-build}</aries.jmx.version>

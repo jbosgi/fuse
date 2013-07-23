@@ -10,9 +10,11 @@
  ******************************************************************************/
 package org.fusesource.fabric.jolokia.facade.facades;
 
+import org.codehaus.jackson.map.type.TypeFactory;
 import org.fusesource.fabric.api.*;
-import org.fusesource.fabric.jolokia.facade.utils.Helpers;
 import org.fusesource.fabric.jolokia.facade.JolokiaFabricConnector;
+import org.fusesource.fabric.jolokia.facade.dto.ProfileDTO;
+import org.fusesource.fabric.jolokia.facade.utils.Helpers;
 import org.jolokia.client.J4pClient;
 import org.jolokia.client.request.J4pExecRequest;
 import org.jolokia.client.request.J4pExecResponse;
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -230,7 +233,14 @@ public class FabricServiceFacade implements FabricService {
 
     @Override
     public FabricRequirements getRequirements() {
-        throw new UnsupportedOperationException("The method is not yet implemented.");
+        JSONObject obj = Helpers.exec(getJolokiaClient(), "requirements()");
+        FabricRequirements requirements = null;
+        try {
+            requirements = Helpers.getObjectMapper().readValue(obj.toJSONString(), FabricRequirements.class);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return requirements;
     }
 
     @Override
@@ -240,10 +250,17 @@ public class FabricServiceFacade implements FabricService {
 
     @Override
     public FabricStatus getFabricStatus() {
+        JSONObject obj = Helpers.exec(getJolokiaClient(), "fabricStatus()");
         FabricStatus status = null;
-        JSONObject o = Helpers.exec(getJolokiaClient(), "fabricstatus()");
-        System.out.println(o.toJSONString());
-
+        try {
+            Map<String, ProfileStatus> profStats = Helpers.getObjectMapper().readValue(obj.toJSONString(), Map.class);
+            status = new FabricStatus();
+            status.setProfileStatusMap(profStats);
+            status.setService(this);
+            status.init();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         return status;
     }
 
