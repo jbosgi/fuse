@@ -106,7 +106,6 @@
         <fabric.version>${project.version}</fabric.version>
         <fuse.version>${project.version}</fuse.version>
 				-->
-        <perfectus-build>007</perfectus-build>
         <full-perfectus-build>610${perfectus-build}</full-perfectus-build>
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
@@ -1588,22 +1587,22 @@
     <profile>
       <id>snapshots</id>
       <properties>
-        <perfectus-build>SNAPSHOT</perfectus-build>
-        <activemq-version>5.9.0.redhat-610-SNAPSHOT</activemq-version>
-        <aries.blueprint.version>1.0.1.redhat-610-SNAPSHOT</aries.blueprint.version>
-        <aries.jmx.version>1.0.1.redhat-610-SNAPSHOT</aries.jmx.version>
-        <aries.transaction.version>1.0.1.redhat-610-SNAPSHOT</aries.transaction.version>
-        <aries.util.version>1.0.1.redhat-610-SNAPSHOT</aries.util.version>
-        <aries.proxy.version>1.0.1.redhat-610-SNAPSHOT</aries.proxy.version>
-        <camel-version>2.12.0.redhat-610-SNAPSHOT</camel-version>
-        <cxf-version>2.7.0.redhat-610-SNAPSHOT</cxf-version>
-        <felix-configadmin-version>1.4.0.redhat-610-SNAPSHOT</felix-configadmin-version>
-        <felix-eventadmin-version>1.3.0.redhat-610-SNAPSHOT</felix-eventadmin-version>
-        <felix-fileinstall-version>3.3.11.redhat-610-SNAPSHOT</felix-fileinstall-version>
-        <felix-framework-version>4.0.3.redhat-610-SNAPSHOT</felix-framework-version>
-        <felix-framework-security-version>2.0.1.redhat-610-SNAPSHOT</felix-framework-security-version>
-        <karaf-version>2.3.0.redhat-610-SNAPSHOT</karaf-version>
-        <servicemix.components.version>2013.01.0.redhat-610-SNAPSHOT</servicemix.components.version>
+        <perfectus-build>020</perfectus-build>
+        <activemq-version>5.8.0.fuse-72-${perfectus-build}</activemq-version>
+        <aries.blueprint.version>1.0.1.fuse-72-${perfectus-build}</aries.blueprint.version>
+        <aries.jmx.version>1.0.1.fuse-72-${perfectus-build}</aries.jmx.version>
+        <aries.transaction.version>1.0.1.fuse-72-${perfectus-build}</aries.transaction.version>
+        <aries.util.version>1.0.1.fuse-72-${perfectus-build}</aries.util.version>
+        <aries.proxy.version>1.0.1.fuse-72-${perfectus-build}</aries.proxy.version>
+        <camel-version>2.10.0.fuse-72-${perfectus-build}</camel-version>
+        <cxf-version>2.6.0.fuse-72-${perfectus-build}</cxf-version>
+        <felix-configadmin-version>1.4.0.fuse-72-${perfectus-build}</felix-configadmin-version>
+        <felix-eventadmin-version>1.3.0.fuse-72-${perfectus-build}</felix-eventadmin-version>
+        <felix-fileinstall-version>3.3.11.fuse-72-${perfectus-build}</felix-fileinstall-version>
+        <felix-framework-version>4.0.3.fuse-72-${perfectus-build}</felix-framework-version>
+        <felix-framework-security-version>2.0.1.fuse-72-${perfectus-build}</felix-framework-security-version>
+        <karaf-version>2.3.0.fuse-72-${perfectus-build}</karaf-version>
+        <servicemix.components.version>2012.01.0.fuse-72-${perfectus-build}</servicemix.components.version>
         <servicemix.features.version>4.5.0-fuse-${perfectus-build}</servicemix.features.version>
         <servicemix-nmr-version>1.6.0.redhat-610-SNAPSHOT</servicemix-nmr-version>
         <servicemix-specs-version>2.3.0.redhat-610-SNAPSHOT</servicemix-specs-version>

@@ -56,6 +56,21 @@ public class FabricServiceFacadeTest {
     }
 
     @Test
+    public void testGetFabricStatus() {
+
+        // this can only be run if you have a fabric running...
+//        Assume.assumeTrue(Boolean.valueOf(System.getProperty("hasFabric")));
+
+//        FabricService service = getFabricService();
+//
+//        System.out.println("Grabbing Fabric Status...");
+//
+//        FabricStatus status = service.getFabricStatus();
+//
+//        System.out.println("Fabric Status: " + status);
+    }
+
+    @Test
     public void testGetContainerMetadata() {
 
         // this can only be run if you have a fabric running...
@@ -110,7 +125,7 @@ public class FabricServiceFacadeTest {
 
         FabricService service = getFabricService();
 
-        CreateChildContainerOptions options = CreateContainerOptionsBuilder.child().jmxUser(userName).jmxPassword(password).name("test").parent("root").number(1).build();
+        CreateChildContainerOptions options = CreateContainerOptionsBuilder.child().jmxUser(userName).jmxPassword(password).name("test").parent("root").build();
 
         service.createContainers(options);
 

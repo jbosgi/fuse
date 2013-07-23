@@ -1,35 +1,56 @@
-package org.fusesource.fabric.jolokia.facade;
+package org.fusesource.fabric.jolokia.facade.utils;
 
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.fusesource.fabric.api.CreateContainerMetadata;
 import org.fusesource.fabric.api.CreateContainerOptions;
 import org.fusesource.fabric.api.HasId;
+import org.fusesource.fabric.jolokia.facade.mbeans.MBeans;
 import org.jolokia.client.J4pClient;
 import org.jolokia.client.request.*;
 
+import javax.management.MalformedObjectNameException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import static org.fusesource.fabric.jolokia.facade.JolokiaFabricConnector.createExecRequest;
-import static org.fusesource.fabric.jolokia.facade.JolokiaFabricConnector.createReadRequest;
-import static org.fusesource.fabric.jolokia.facade.JolokiaFabricConnector.createWriteRequest;
 
 /**
  * @author Stan Lewis
  */
 public class Helpers {
 
-    static private ObjectMapper mapper = null;
+    private static ObjectMapper mapper = null;
 
-    static List<Object> toList(Object... args) {
+    public static List<Object> toList(Object... args) {
         List<Object> rc = new ArrayList<Object>();
         for (Object arg : args) {
             rc.add(arg);
         }
         return rc;
+    }
+
+    public static J4pExecRequest createExecRequest(String operation, Object... args) throws MalformedObjectNameException {
+        J4pExecRequest rc = new J4pExecRequest(MBeans.FABRIC.getUrl(), operation, args);
+        rc.setPreferredHttpMethod("POST");
+        return rc;
+    }
+
+    public static J4pWriteRequest createWriteRequest(String attribute, Object value) throws MalformedObjectNameException {
+        J4pWriteRequest answer = new J4pWriteRequest(MBeans.FABRIC.getUrl(), attribute, value);
+        answer.setPreferredHttpMethod("POST");
+        return answer;
+    }
+
+    public static J4pReadRequest createReadRequest(String attribute) throws MalformedObjectNameException {
+        J4pReadRequest answer = null;
+        if (attribute == null || attribute.toString().length() < 1) {
+            answer = new J4pReadRequest(MBeans.FABRIC.getUrl());
+        } else {
+            answer = new J4pReadRequest(MBeans.FABRIC.getUrl(), attribute);
+        }
+        answer.setPreferredHttpMethod("POST");
+        return answer;
     }
 
     public static void doContainerAction(J4pClient j4p, String action, String id) {
@@ -52,9 +73,38 @@ public class Helpers {
         try {
             J4pExecRequest request = createExecRequest(operation, args);
             J4pExecResponse response = j4p.execute(request);
+            //System.out.println(response.getValue().toString());
             return response.getValue();
         } catch (Exception e) {
             throw new RuntimeException("Failed to call " + operation + " with args: " + args, e);
+        }
+    }
+
+    /**
+     * executes an operation and returns the json result value
+     *
+     * @param j4p
+     * @param operation
+     * @param args
+     * @return
+     */
+    public static String execToJSON(J4pClient j4p, String operation, Object ... args) {
+        try {
+            J4pExecRequest request = createExecRequest(operation, args);
+            J4pExecResponse response = j4p.execute(request);
+            return response.getValue().toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to call " + operation + " with args: " + args, e);
+        }
+    }
+
+    public static String readToJSON(J4pClient j4p, String attribute) {
+        try {
+            J4pReadRequest request = createReadRequest(attribute);
+            J4pReadResponse response = j4p.execute(request);
+            return response.getValue().toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read " + attribute, e);
         }
     }
 
@@ -74,7 +124,6 @@ public class Helpers {
             J4pReadRequest request = createReadRequest(attribute);
             J4pReadResponse response = j4p.execute(request);
             return response.getValue();
-
         } catch (Exception e) {
             throw new RuntimeException("Failed to read " + attribute, e);
         }
