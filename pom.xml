@@ -102,7 +102,7 @@
 
         <fabric.version>7.3.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.1.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>022</perfectus-build>
+        <perfectus-build>023</perfectus-build>
         <full-perfectus-build>610${perfectus-build}</full-perfectus-build>
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
@@ -247,7 +247,7 @@
         <slf4j-api-version>1.6.6</slf4j-api-version>
         <slf4j-version>1.6.6</slf4j-version>
         <spring-osgi-version>1.2.1</spring-osgi-version>
-        <spring-version>3.1.3.RELEASE</spring-version>
+        <spring-version>3.1.4.RELEASE</spring-version>
         <sshd-version>0.8.0</sshd-version>
         <sshj.version>0.7.0</sshj.version>
         <surefire-version>2.12</surefire-version>
@@ -732,6 +732,18 @@
           <url>https://oss.sonatype.org/content/repositories/snapshots</url>
           <releases><enabled>false</enabled></releases>
           <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+        <!-- Gemini Blueprint repository -->
+        <repository>
+            <id>zodiac-repository</id>
+            <name>Zodiac Release Repository</name>
+            <url>http://zodiac.springsource.com/maven/bundles/release</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
@@ -1584,7 +1596,7 @@
     <profile>
       <id>snapshots</id>
       <properties>
-        <perfectus-build>022</perfectus-build>
+        <perfectus-build>023</perfectus-build>
         <activemq-version>5.8.0.fuse-72-${perfectus-build}</activemq-version>
         <aries.blueprint.version>1.0.1.fuse-72-${perfectus-build}</aries.blueprint.version>
         <aries.jmx.version>1.0.1.fuse-72-${perfectus-build}</aries.jmx.version>

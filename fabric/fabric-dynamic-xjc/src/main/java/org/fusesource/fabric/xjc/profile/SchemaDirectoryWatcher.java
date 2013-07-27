@@ -43,6 +43,7 @@ import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.xjc.CompileResults;
+import org.fusesource.fabric.xjc.DynamicJaxbDataFormat;
 import org.fusesource.fabric.xjc.DynamicXJC;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.osgi.framework.BundleContext;
@@ -65,6 +66,8 @@ public class SchemaDirectoryWatcher implements PathChildrenCacheListener {
     private final ConcurrentMap<String, PathChildrenCache>
             pathCacheMap = new ConcurrentHashMap<String, PathChildrenCache>();
     private long timerDelay = 1000;
+    private CompileResults compileResults;
+    private DynamicJaxbDataFormat dataFormat;
 
     public SchemaDirectoryWatcher() {
     }
@@ -103,6 +106,13 @@ public class SchemaDirectoryWatcher implements PathChildrenCacheListener {
 
     // Properties
     //-------------------------------------------------------------------------
+
+    /**
+     * Returns the latest XJC compiler results
+     */
+    public CompileResults getCompileResults() {
+        return compileResults;
+    }
 
     public FabricService getFabricService() {
         return fabricService;
@@ -152,6 +162,13 @@ public class SchemaDirectoryWatcher implements PathChildrenCacheListener {
         this.timerDelay = timerDelay;
     }
 
+    public DynamicJaxbDataFormat getDataFormat() {
+        return dataFormat;
+    }
+
+    public void setDataFormat(DynamicJaxbDataFormat dataFormat) {
+        this.dataFormat = dataFormat;
+    }
 
     // Implementation
     //-------------------------------------------------------------------------
@@ -211,13 +228,14 @@ public class SchemaDirectoryWatcher implements PathChildrenCacheListener {
 
         ClassLoader classLoader = AriesFrameworkUtil.getClassLoader(bundleContext.getBundle());
         if (classLoader == null) {
-            System.out.println("No class loader!");
             classLoader = getClass().getClassLoader();
         }
-        System.out.println("Class loader : " + classLoader);
         DynamicXJC xjc = new DynamicXJC(classLoader);
         xjc.setSchemaUrls(new ArrayList<String>(urls));
-        CompileResults compileResults = xjc.compileSchemas();
-        System.out.println("got results: " + compileResults.getJAXBContext());
+        compileResults = xjc.compileSchemas();
+        LOG.info("Got XJC JAXBContext: " + compileResults.getJAXBContext());
+        if (dataFormat != null) {
+            dataFormat.updateCompileResults(compileResults);
+        }
     }
 }
