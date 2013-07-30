@@ -102,7 +102,8 @@
 
         <fabric.version>7.3.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.1.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>023</perfectus-build>
+        <perfectus-build>024</perfectus-build>
+
         <full-perfectus-build>610${perfectus-build}</full-perfectus-build>
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
@@ -1596,7 +1597,7 @@
     <profile>
       <id>snapshots</id>
       <properties>
-        <perfectus-build>023</perfectus-build>
+        <perfectus-build>024</perfectus-build>
         <activemq-version>5.8.0.fuse-72-${perfectus-build}</activemq-version>
         <aries.blueprint.version>1.0.1.fuse-72-${perfectus-build}</aries.blueprint.version>
         <aries.jmx.version>1.0.1.fuse-72-${perfectus-build}</aries.jmx.version>
