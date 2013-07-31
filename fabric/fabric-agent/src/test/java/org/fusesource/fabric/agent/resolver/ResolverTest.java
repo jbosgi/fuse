@@ -16,61 +16,34 @@
  */
 package org.fusesource.fabric.agent.resolver;
 
+import java.io.File;
+import java.net.URI;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.Executors;
+
 import aQute.lib.osgi.Macro;
 import aQute.lib.osgi.Processor;
 import org.apache.felix.framework.Felix;
-import org.apache.felix.resolver.ResolverImpl;
-import org.apache.karaf.features.BundleInfo;
-import org.apache.karaf.features.Feature;
 import org.apache.karaf.features.Repository;
-import org.fusesource.common.util.Manifests;
 import org.fusesource.fabric.agent.DeploymentBuilder;
 import org.fusesource.fabric.agent.download.DownloadManager;
 import org.fusesource.fabric.agent.mvn.MavenConfigurationImpl;
 import org.fusesource.fabric.agent.mvn.MavenSettingsImpl;
 import org.fusesource.fabric.agent.mvn.PropertiesPropertyResolver;
 import org.fusesource.fabric.agent.utils.AgentUtils;
-import org.fusesource.fabric.fab.osgi.FabBundleInfo;
 import org.junit.Test;
-import org.osgi.framework.BundleException;
 import org.osgi.framework.launch.Framework;
 import org.osgi.framework.wiring.BundleRevision;
-import org.osgi.framework.wiring.BundleRevisions;
-import org.osgi.resource.Requirement;
 import org.osgi.resource.Resource;
-import org.osgi.resource.Wire;
-import org.osgi.service.resolver.ResolveContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.jar.Attributes;
-import java.util.jar.JarFile;
-import java.util.jar.Manifest;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static org.fusesource.fabric.agent.resolver.UriNamespace.getUri;
-import static org.fusesource.fabric.agent.utils.AgentUtils.downloadBundles;
 import static org.junit.Assert.assertEquals;
 
 /**

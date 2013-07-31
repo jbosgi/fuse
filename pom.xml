@@ -102,8 +102,7 @@
 
         <fabric.version>7.3.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.1.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>024</perfectus-build>
-
+        <perfectus-build>025</perfectus-build>
         <full-perfectus-build>610${perfectus-build}</full-perfectus-build>
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
@@ -222,7 +221,7 @@
         <org.apache.servicemix.bundles.jzlib.version>1.0.7_1</org.apache.servicemix.bundles.jzlib.version>
         <osgi-version>5.0.0</osgi-version>
         <osgi-compendium-version>4.3.1</osgi-compendium-version>
-        <osgi-enterprise-version>4.2.0</osgi-enterprise-version>
+        <osgi-enterprise-version>5.0.0</osgi-enterprise-version>
         <pax-exam-version>2.3.1</pax-exam-version>
         <pax.logging.version>1.7.0</pax.logging.version>
         <pax-runner-version>1.7.6</pax-runner-version>
@@ -972,6 +971,12 @@
             </dependency>
             <dependency>
                 <groupId>org.fusesource.fabric</groupId>
+                <artifactId>watcher-core</artifactId>
+                <version>${fabric.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.fusesource.fabric</groupId>
                 <artifactId>org.fusesource.fabric.karaf.branding</artifactId>
                 <version>${fabric.version}</version>
             </dependency>
@@ -1597,7 +1602,7 @@
     <profile>
       <id>snapshots</id>
       <properties>
-        <perfectus-build>024</perfectus-build>
+        <perfectus-build>025</perfectus-build>
         <activemq-version>5.8.0.fuse-72-${perfectus-build}</activemq-version>
         <aries.blueprint.version>1.0.1.fuse-72-${perfectus-build}</aries.blueprint.version>
         <aries.jmx.version>1.0.1.fuse-72-${perfectus-build}</aries.jmx.version>
