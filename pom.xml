@@ -52,6 +52,7 @@
     </prerequisites>
 
     <properties>
+        <perfectus-build>025</perfectus-build>
         <forge-project-id>fabric</forge-project-id>
         <maven.compiler.source>1.6</maven.compiler.source>
         <maven.compiler.target>1.6</maven.compiler.target>
@@ -102,7 +103,6 @@
 
         <fabric.version>7.3.0.redhat-SNAPSHOT</fabric.version>
         <fuse.version>6.1.0.redhat-SNAPSHOT</fuse.version>
-        <perfectus-build>025</perfectus-build>
         <full-perfectus-build>610${perfectus-build}</full-perfectus-build>
 
         <activemq-version>5.9.0.redhat-${full-perfectus-build}</activemq-version>
