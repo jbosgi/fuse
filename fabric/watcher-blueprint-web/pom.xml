@@ -14,7 +14,8 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -24,34 +25,41 @@
         <relativePath>..</relativePath>
     </parent>
 
-    <artifactId>watcher-core</artifactId>
+    <artifactId>watcher-blueprint-web</artifactId>
     <packaging>bundle</packaging>
 
     <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Watcher Core</description>
+    <description>Fuse Fabric :: Watcher :: Blueprint Web</description>
 
     <properties>
         <fuse.osgi.export>
-            org.fusesource.fabric.watcher*;version=${fuse.osgi.version};-noimport:=true,
+            org.fusesource.fabric.watcher.blueprint.web*;version=${fuse.osgi.version};-noimport:=true,
         </fuse.osgi.export>
-<!--
-        <fuse.osgi.activator>org.fusesource.fabric.xjc.Activator</fuse.osgi.activator>
--->
-        <fuse.osgi.private.pkg>
-            org.fusesource.common.util
-        </fuse.osgi.private.pkg>
     </properties>
 
     <dependencies>
         <dependency>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-api</artifactId>
-          <version>${slf4j-version}</version>
+            <groupId>org.fusesource.fabric</groupId>
+            <artifactId>watcher-core</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>common-util</artifactId>
-            <version>${project.version}</version>
+          <groupId>org.apache.aries.blueprint</groupId>
+          <artifactId>org.apache.aries.blueprint.web</artifactId>
+          <version>${blueprint-web-version}</version>
+          <scope>compile</scope>
+          <exclusions>
+            <exclusion>
+              <groupId>org.apache.geronimo.specs</groupId>
+              <artifactId>geronimo-servlet_2.5_spec</artifactId>
+            </exclusion>
+            <!-- ignore old versions -->
+            <exclusion>
+              <groupId>org.slf4j</groupId>
+              <artifactId>slf4j-api</artifactId>
+            </exclusion>
+          </exclusions>
         </dependency>
 
         <!-- testing -->
@@ -60,24 +68,18 @@
             <artifactId>slf4j-log4j12</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-          <groupId>junit</groupId>
-          <artifactId>junit</artifactId>
-          <version>${junit-version}</version>
-          <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
         <plugins>
 
-          <!-- fork per test to not have side effects between tests -->
-          <plugin>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <forkMode>pertest</forkMode>
-            </configuration>
-          </plugin>
+            <!-- fork per test to not have side effects between tests -->
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <forkMode>pertest</forkMode>
+                </configuration>
+            </plugin>
 
         </plugins>
     </build>
