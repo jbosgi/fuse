@@ -113,8 +113,9 @@ public class ZooKeeperClusterBootstrapImpl  implements ZooKeeperClusterBootstrap
             int maximumPort = options.getMaximumPort();
             String zooKeeperServerHost = options.getBindAddress();
             int zooKeeperServerPort = options.getZooKeeperServerPort();
+            int zooKeeperServerConnectionPort = options.getZooKeeperServerConnectionPort();
             int mappedPort = mapPortToRange(zooKeeperServerPort, minimumPort, maximumPort);
-			String connectionUrl = getConnectionAddress() + ":" + Integer.toString(mappedPort);
+			String connectionUrl = getConnectionAddress() + ":" + zooKeeperServerConnectionPort;
 
 
             // Create configuration
@@ -137,7 +138,7 @@ public class ZooKeeperClusterBootstrapImpl  implements ZooKeeperClusterBootstrap
             // configure default profile
             String defaultProfile = dataStore.getProfile(version, "default", true);
 
-            setData(curator, ZkPath.CONFIG_ENSEMBLE_URL.getPath(), "${zk:" + karafName + "/ip}:" + Integer.toString(mappedPort));
+            setData(curator, ZkPath.CONFIG_ENSEMBLE_URL.getPath(), "${zk:" + karafName + "/ip}:" + zooKeeperServerConnectionPort);
             setData(curator, ZkPath.CONFIG_ENSEMBLE_PASSWORD.getPath(), options.getZookeeperPassword());
 
             Properties zkProps = new Properties();
@@ -204,6 +205,14 @@ public class ZooKeeperClusterBootstrapImpl  implements ZooKeeperClusterBootstrap
 
             // Create the client configuration
             createZooKeeeperConfig(connectionUrl, options);
+            // Reset the autostart flag
+            if (ensembleAutoStart) {
+                System.setProperty(SystemProperties.ENSEMBLE_AUTOSTART, Boolean.FALSE.toString());
+                File file = new File(System.getProperty("karaf.base") + "/etc/system.properties");
+                org.apache.felix.utils.properties.Properties props = new org.apache.felix.utils.properties.Properties(file);
+                props.put(SystemProperties.ENSEMBLE_AUTOSTART, Boolean.FALSE.toString());
+                props.save();
+            }
             startBundles(options);
 		} catch (Exception e) {
 			throw new FabricException("Unable to create zookeeper server configuration", e);
