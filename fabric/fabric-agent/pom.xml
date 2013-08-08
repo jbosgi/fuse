@@ -63,7 +63,8 @@
             org.slf4j.*,
             org.linkedin.zookeeper.*,
             org.apache.zookeeper.*,
-            org.fusesource.fabric.zookeeper.*
+            org.fusesource.fabric.zookeeper.*,
+            org.apache.karaf.jaas.boot.principal.*
         </fuse.osgi.import>
         <fuse.osgi.export>
         </fuse.osgi.export>

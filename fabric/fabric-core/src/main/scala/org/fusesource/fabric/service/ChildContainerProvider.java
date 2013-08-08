@@ -16,30 +16,25 @@
  */
 package org.fusesource.fabric.service;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.apache.karaf.admin.InstanceSettings;
 import org.apache.karaf.admin.management.AdminServiceMBean;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.fusesource.fabric.api.*;
-import org.fusesource.fabric.internal.FabricConstants;
+import org.fusesource.fabric.utils.AuthenticationUtils;
 import org.fusesource.fabric.utils.Ports;
 import org.fusesource.fabric.zookeeper.IZKClient;
 import org.fusesource.fabric.zookeeper.ZkDefs;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.fusesource.fabric.utils.Ports.mapPortToRange;
-import static org.fusesource.fabric.zookeeper.ZkPath.CONTAINER_ADDRESS;
-import static org.fusesource.fabric.zookeeper.ZkPath.CONTAINER_IP;
-import static org.fusesource.fabric.zookeeper.ZkPath.CONTAINER_RESOLVER;
+import static org.fusesource.fabric.zookeeper.ZkPath.*;
 
 
 public class ChildContainerProvider implements ContainerProvider<CreateContainerChildOptions, CreateContainerChildMetadata> {
@@ -191,6 +186,15 @@ public class ChildContainerProvider implements ContainerProvider<CreateContainer
      */
     protected ContainerTemplate getContainerTemplateForChild(Container container) {
         CreateContainerChildOptions options = (CreateContainerChildOptions) container.getMetadata().getCreateOptions();
+
+        String username = AuthenticationUtils.retrieveJaasUser();
+        String password = AuthenticationUtils.retrieveJaasPassword();
+
+        if (username != null && password != null) {
+            options.setJmxPassword(password);
+            options.setJmxUser(username);
+        }
+
         return new ContainerTemplate(container.getParent(), options.getJmxUser(), options.getJmxPassword(), false);
     }
 
