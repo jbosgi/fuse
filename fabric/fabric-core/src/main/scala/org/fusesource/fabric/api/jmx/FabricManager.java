@@ -155,15 +155,22 @@ public class FabricManager implements FabricManagerMBean {
 
         CreateContainerBasicOptions.Builder builder = null;
 
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        mapper.configure(DeserializationConfig.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
-
-        builder = (CreateContainerBasicOptions.Builder) mapper.convertValue(options, fabricService.getProviders().get(providerType).getOptionsType());
+        Class clazz = fabricService.getProviders().get(providerType).getOptionsType();
+        try {
+            builder = (CreateContainerBasicOptions.Builder)clazz.getMethod("builder").invoke(null);
+        } catch (Exception e) {
+            LOG.warn("Failed to find builder type", e);
+        }
 
         if (builder == null) {
             throw new RuntimeException("Unknown provider type : " + providerType);
         }
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(DeserializationConfig.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
+
+        builder = mapper.convertValue(options, builder.getClass());
 
         builder.zookeeperPassword(getFabricService().getZookeeperPassword());
         builder.zookeeperUrl(getFabricService().getZookeeperUrl());
@@ -851,6 +858,18 @@ public class FabricManager implements FabricManagerMBean {
             rc.add(status);
         }
         return rc;
+    }
+
+    @Override
+    public Map<String, String> registeredProviders() {
+        Map<String, ContainerProvider> providers = getFabricService().getProviders();
+
+        Map<String, String> answer = new HashMap<String, String>();
+
+        for (String name : providers.keySet()) {
+            answer.put(name, providers.get(name).getOptionsType().getName());
+        }
+        return answer;
     }
 
 
