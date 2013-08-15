@@ -46,6 +46,20 @@ public class Files {
      * @throws IOException
      */
     public static String toString(File file, Charset charset) throws IOException {
+        byte[] bytes = readBytes(file);
+        if (charset != null) {
+            return new String(bytes, charset);
+        } else {
+            return new String(bytes);
+        }
+    }
+
+    /**
+     * Reads a {@link File} and returns the data as a byte array
+     *
+     * @throws IOException
+     */
+    public static byte[] readBytes(File file) throws IOException {
         FileInputStream fis = null;
         ByteArrayOutputStream bos = null;
         if (file == null) {
@@ -59,12 +73,7 @@ public class Files {
             while ((remaining = fis.read(buffer)) > 0) {
                 bos.write(buffer, 0, remaining);
             }
-            if (charset != null) {
-                return new String(bos.toByteArray(), charset);
-            } else {
-                return new String(bos.toByteArray());
-            }
-
+            return bos.toByteArray();
         } finally {
             Closeables.closeQuitely(fis);
             Closeables.closeQuitely(bos);
@@ -171,6 +180,17 @@ public class Files {
         } finally {
             Closeables.closeQuitely(is);
             Closeables.closeQuitely(os);
+        }
+    }
+
+
+    public static String getRelativePath(File rootDir, File file) throws IOException {
+        String rootPath = rootDir.getCanonicalPath();
+        String fullPath = file.getCanonicalPath();
+        if (fullPath.startsWith(rootPath)) {
+            return fullPath.substring(rootPath.length());
+        } else {
+            return fullPath;
         }
     }
 }
