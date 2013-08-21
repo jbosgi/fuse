@@ -145,6 +145,26 @@
                <artifactId>fabric-core-agent-ssh</artifactId>
                <version>${project.version}</version>
            </dependency>
+           <dependency>
+               <groupId>org.fusesource.fabric</groupId>
+               <artifactId>fabric-camel</artifactId>
+               <version>${project.version}</version>
+           </dependency>
+           <dependency>
+               <groupId>org.fusesource.fabric</groupId>
+               <artifactId>fabric-jolokia</artifactId>
+               <version>${project.version}</version>
+           </dependency>
+           <dependency>
+               <groupId>org.fusesource.fabric</groupId>
+               <artifactId>fabric-web</artifactId>
+               <version>${project.version}</version>
+           </dependency>
+           <dependency>
+               <groupId>org.jboss.amq</groupId>
+               <artifactId>mq-fabric</artifactId>
+               <version>${project.version}</version>
+           </dependency>
 
            <!-- need this transitive of org.apache.servicemix.bundles.jasypt
                 to get this building in offline mode -->
@@ -290,7 +310,10 @@
                                    <feature>fabric-zeroconf</feature>
                                    -->
                                    <feature>fabric-web</feature>
+<!--
+TODO - zapped to try fix perfectus!
                                    <feature>mq-fabric</feature>
+-->
                                    <feature>insight-elasticsearch</feature>
                                    <feature>insight-log-storage</feature>
                                    <feature>process-manager</feature>
