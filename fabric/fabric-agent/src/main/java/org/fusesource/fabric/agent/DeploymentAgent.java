@@ -16,12 +16,58 @@
  */
 package org.fusesource.fabric.agent;
 
+import org.apache.felix.bundlerepository.Resource;
+import org.apache.felix.utils.manifest.Clause;
+import org.apache.felix.utils.manifest.Parser;
+import org.apache.felix.utils.properties.Properties;
+import org.apache.felix.utils.version.VersionRange;
+import org.apache.karaf.features.BundleInfo;
+import org.apache.karaf.features.Feature;
+import org.apache.karaf.features.Repository;
+import org.apache.karaf.features.internal.FeatureValidationUtil;
+import org.apache.karaf.features.internal.FeaturesServiceImpl;
+import org.apache.karaf.features.internal.RepositoryImpl;
+import org.fusesource.fabric.agent.download.DownloadFuture;
+import org.fusesource.fabric.agent.download.DownloadManager;
+import org.fusesource.fabric.agent.download.FutureListener;
+import org.fusesource.fabric.agent.executor.FelixExecutorServiceManager;
+import org.fusesource.fabric.agent.executor.FixedExecutorServiceManager;
+import org.fusesource.fabric.agent.mvn.DictionaryPropertyResolver;
+import org.fusesource.fabric.agent.mvn.MavenConfigurationImpl;
+import org.fusesource.fabric.agent.mvn.MavenRepositoryURL;
+import org.fusesource.fabric.agent.mvn.MavenSettingsImpl;
+import org.fusesource.fabric.agent.mvn.PropertiesPropertyResolver;
+import org.fusesource.fabric.agent.mvn.PropertyStore;
+import org.fusesource.fabric.agent.utils.ChecksumUtils;
+import org.fusesource.fabric.agent.utils.MultiException;
+import org.fusesource.fabric.fab.MavenResolver;
+import org.fusesource.fabric.fab.MavenResolverImpl;
+import org.fusesource.fabric.fab.osgi.FabBundleInfo;
+import org.fusesource.fabric.fab.osgi.FabResolver;
+import org.fusesource.fabric.fab.osgi.FabResolverFactory;
+import org.fusesource.fabric.fab.osgi.ServiceConstants;
+import org.fusesource.fabric.fab.osgi.internal.Configuration;
+import org.fusesource.fabric.fab.osgi.internal.FabResolverFactoryImpl;
+import org.fusesource.fabric.zookeeper.IZKClient;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.Constants;
+import org.osgi.framework.FrameworkEvent;
+import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.ServiceReference;
+import org.osgi.framework.Version;
+import org.osgi.service.cm.ManagedService;
+import org.osgi.service.packageadmin.PackageAdmin;
+import org.osgi.service.startlevel.StartLevel;
+import org.osgi.util.tracker.ServiceTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -44,71 +90,16 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.felix.bundlerepository.Resource;
-import org.apache.felix.framework.monitor.MonitoringService;
-import org.apache.felix.utils.manifest.Clause;
-import org.apache.felix.utils.manifest.Parser;
-import org.apache.felix.utils.properties.Properties;
-import org.apache.felix.utils.version.VersionRange;
-import org.apache.karaf.features.BundleInfo;
-import org.apache.karaf.features.Feature;
-import org.apache.karaf.features.Repository;
-import org.apache.karaf.features.internal.FeatureValidationUtil;
-import org.apache.karaf.features.internal.FeaturesServiceImpl;
-import org.apache.karaf.features.internal.RepositoryImpl;
-import org.apache.zookeeper.CreateMode;
-import org.fusesource.fabric.agent.download.DownloadFuture;
-import org.fusesource.fabric.agent.download.DownloadManager;
-import org.fusesource.fabric.agent.download.FutureListener;
-import org.fusesource.fabric.agent.mvn.DictionaryPropertyResolver;
-import org.fusesource.fabric.agent.mvn.MavenConfigurationImpl;
-import org.fusesource.fabric.agent.mvn.MavenRepositoryURL;
-import org.fusesource.fabric.agent.mvn.MavenSettingsImpl;
-import org.fusesource.fabric.agent.mvn.PropertiesPropertyResolver;
-import org.fusesource.fabric.agent.mvn.PropertyStore;
-import org.fusesource.fabric.agent.utils.ChecksumUtils;
-import org.fusesource.fabric.agent.utils.MultiException;
-import org.fusesource.fabric.fab.MavenResolver;
-import org.fusesource.fabric.fab.MavenResolverImpl;
-import org.fusesource.fabric.fab.osgi.FabBundleInfo;
-import org.fusesource.fabric.fab.osgi.FabResolver;
-import org.fusesource.fabric.fab.osgi.FabResolverFactory;
-import org.fusesource.fabric.fab.osgi.ServiceConstants;
-import org.fusesource.fabric.fab.osgi.internal.Configuration;
-import org.fusesource.fabric.fab.osgi.internal.FabResolverFactoryImpl;
-import org.fusesource.fabric.zookeeper.IZKClient;
-import org.fusesource.fabric.zookeeper.ZkDefs;
-import org.fusesource.fabric.zookeeper.ZkPath;
-import org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.BundleException;
-import org.osgi.framework.Constants;
-import org.osgi.framework.FrameworkEvent;
-import org.osgi.framework.FrameworkListener;
-import org.osgi.framework.ServiceReference;
-import org.osgi.framework.Version;
-import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
-import org.osgi.service.packageadmin.PackageAdmin;
-import org.osgi.service.startlevel.StartLevel;
-import org.osgi.util.tracker.ServiceTracker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.fusesource.fabric.utils.features.FeatureUtils.search;
 
-public class DeploymentAgent implements ManagedService, FrameworkListener {
-
-    public static final String FAB_PROTOCOL = "fab:";
-    private static final String FABRIC_ZOOKEEPER_PID = "fabric.zookeeper.id";
+public class DeploymentAgent extends AbstractDeploymentAgent implements ManagedService, FrameworkListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeploymentAgent.class);
+    public static final String FAB_PROTOCOL = "fab:";
+    private static final String FABRIC_ZOOKEEPER_PID = "fabric.zookeeper.id";
+    private static final String CACHE_REPO = "file://" + System.getProperty("karaf.data") + "/maven/agent" + "@snapshots";
+    private static final String SYSTEM_REPO = "file://" + System.getProperty("karaf.home") + "/system" + "@snapshots";
 
     private BundleContext bundleContext;
     private BundleContext systemBundleContext;
@@ -119,21 +110,9 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
 
     private final Object refreshLock = new Object();
     private long refreshTimeout = 5000;
-
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("fabric-agent"));
-    private ExecutorService downloadExecutor;
-    private volatile boolean shutdownDownloadExecutor;
-    private DownloadManager manager;
-    private ExecutorServiceFinder executorServiceFinder;
-
     private Properties checksums;
 
     public DeploymentAgent() throws MalformedURLException {
-        final MavenConfigurationImpl config = new MavenConfigurationImpl(
-                new PropertiesPropertyResolver(System.getProperties()), "org.ops4j.pax.url.mvn"
-        );
-        config.setSettings(new MavenSettingsImpl(config.getSettingsFileUrl(), config.useFallbackRepositories()));
-        manager = new DownloadManager(config);
     }
 
     public StartLevel getStartLevel() {
@@ -150,10 +129,6 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
 
     public ObrResolver getObrResolver() {
         return obrResolver;
-    }
-
-    public ServiceTracker getZkClient() {
-        return zkClient;
     }
 
     public void setBundleContext(BundleContext bundleContext) {
@@ -178,6 +153,18 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
 
     public void start() throws IOException {
         LOGGER.info("Starting DeploymentAgent");
+        getDownloadExecutorManager().add(new FelixExecutorServiceManager(bundleContext.getBundle()));
+        getDownloadExecutorManager().add(new FixedExecutorServiceManager(5));
+
+        final MavenConfigurationImpl config = new MavenConfigurationImpl(
+                new PropertiesPropertyResolver(System.getProperties()), "org.ops4j.pax.url.mvn"
+        );
+
+        config.setSettings(new MavenSettingsImpl(config.getSettingsFileUrl(), config.useFallbackRepositories()));
+        setDownloadManager(new DownloadManager(config, getDownloadExecutorManager().get(),
+                new MavenRepositoryURL(CACHE_REPO),
+                Arrays.asList(new MavenRepositoryURL(SYSTEM_REPO))));
+
         bundleContext.addFrameworkListener(this);
         systemBundleContext = bundleContext.getBundle(0).getBundleContext();
         if (checksums == null) {
@@ -212,79 +199,20 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
         checksums.save();
     }
 
-    public void stop() throws InterruptedException {
-        LOGGER.info("Stopping DeploymentAgent");
-        // We can't wait for the threads to finish because the agent needs to be able to
-        // update itself and this would cause a deadlock
-        executor.shutdown();
-        if (shutdownDownloadExecutor && downloadExecutor != null) {
-            downloadExecutor.shutdown();
-            downloadExecutor = null;
-        }
+    public void stop() throws InterruptedException, IOException {
+        super.stop();
         bundleContext.removeFrameworkListener(this);
-        manager.shutdown();
     }
 
-    public void updated(final Dictionary props) throws ConfigurationException {
-        LOGGER.info("DeploymentAgent updated with {}", props);
-        if (executor.isShutdown() || props == null) {
-            return;
-        }
-        executor.submit(new Runnable() {
-            public void run() {
-                Throwable result = null;
-                boolean success = false;
-                try {
-                    success = doUpdate(props);
-                } catch (Throwable e) {
-                    result = e;
-                    LOGGER.error("Unable to update agent", e);
-                }
-                // This update is critical, so
-                if (success || result != null) {
-                    updateStatus(success ? ZkDefs.SUCCESS : ZkDefs.ERROR, result, null, true);
-                }
-            }
-        });
+
+    @Override
+    public IZKClient getZooKeeper() {
+        return (IZKClient) zkClient.getService();
     }
 
-    private void updateStatus(String status, Throwable result) {
-        updateStatus(status, result, null, false);
-    }
-
-    private void updateStatus(String status, Throwable result, List<Resource> resources, boolean force) {
-        try {
-            IZKClient zk;
-            if (force) {
-                zk = (IZKClient) zkClient.waitForService(0);
-            } else {
-                zk = (IZKClient) zkClient.getService();
-            }
-            if (zk != null) {
-                String name = System.getProperty("karaf.name");
-                String e;
-                if (result == null) {
-                    e = null;
-                } else {
-                    StringWriter sw = new StringWriter();
-                    result.printStackTrace(new PrintWriter(sw));
-                    e = sw.toString();
-                }
-                if (resources != null) {
-                    StringWriter sw = new StringWriter();
-                    for (Resource res : resources) {
-                        sw.write(res.getURI() + "\n");
-                    }
-                    zk.createOrSetWithParents(ZkPath.CONTAINER_PROVISION_LIST.getPath(name), sw.toString(), CreateMode.PERSISTENT);
-                }
-                zk.createOrSetWithParents(ZkPath.CONTAINER_PROVISION_RESULT.getPath(name), status, CreateMode.PERSISTENT);
-                zk.createOrSetWithParents(ZkPath.CONTAINER_PROVISION_EXCEPTION.getPath(name), e, CreateMode.PERSISTENT);
-            } else {
-                LOGGER.info("ZooKeeper not available");
-            }
-        } catch (Throwable e) {
-            LOGGER.warn("Unable to set provisioning result");
-        }
+    @Override
+    public IZKClient waitForZooKeeper() throws InterruptedException {
+        return (IZKClient) zkClient.waitForService(0);
     }
 
     public boolean doUpdate(Dictionary props) throws Exception {
@@ -306,7 +234,9 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
                 "org.ops4j.pax.url.mvn"
         );
         config.setSettings(new MavenSettingsImpl(config.getSettingsFileUrl(), config.useFallbackRepositories()));
-        manager = new DownloadManager(config, getDownloadExecutor());
+        setDownloadManager(new DownloadManager(config, getDownloadExecutorManager().get(),
+                new MavenRepositoryURL(CACHE_REPO),
+                Arrays.asList(new MavenRepositoryURL(SYSTEM_REPO))));
         Map<String, String> properties = new HashMap<String, String>();
         for (Enumeration e = props.keys(); e.hasMoreElements(); ) {
             Object key = e.nextElement();
@@ -429,50 +359,15 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
         return true;
     }
 
-    private void addMavenProxies(Dictionary props) {
-        try {
-            IZKClient zooKeeper = (IZKClient) zkClient.waitForService(0);
-            if (zooKeeper.exists(ZkPath.MAVEN_PROXY.getPath("download")) != null) {
-                StringBuffer sb = new StringBuffer();
-                List<String> proxies = zooKeeper.getChildren(ZkPath.MAVEN_PROXY.getPath("download"));
-                //We want the maven proxies to be sorted in the same manner that the fabric service does.
-                //That's because when someone uses the fabric service to pick a repo for deployment, we want that repo to be used first.
-                Collections.sort(proxies);
-                for (String proxy : proxies) {
-                    try {
-                        String mavenRepo = ZooKeeperUtils.getSubstitutedPath(zooKeeper, ZkPath.MAVEN_PROXY.getPath("download") + "/" + proxy);
-                        if (mavenRepo != null && mavenRepo.length() > 0) {
-                            if (!mavenRepo.endsWith("/")) {
-                                mavenRepo += "/";
-                            }
-                            if (sb.length() > 0) {
-                                sb.append(",");
-                            }
-                            sb.append(mavenRepo);
-                            sb.append("@snapshots");
-                        }
-                    } catch (Throwable t) {
-                        LOGGER.warn("Failed to resolve proxy: " + proxy + ". It will be ignored.");
-                    }
-                }
-                String existingRepos = (String) props.get("org.ops4j.pax.url.mvn.repositories");
-                if (existingRepos != null) {
-                    if (sb.length() > 0) {
-                        sb.append(",");
-                    }
-                    sb.append(existingRepos);
-                }
-                props.put("org.ops4j.pax.url.mvn.repositories", sb.toString());
-            }
-        } catch (Exception e) {
-            LOGGER.warn("Unable to retrieve maven proxy urls: " + e.getMessage());
-            LOGGER.debug("Unable to retrieve maven proxy urls: " + e.getMessage(), e);
-        }
+    @Override
+    public String getContainerName() {
+        return System.getProperty("karaf.name");
     }
+
 
     private void addRepository(Map<URI, Repository> repositories, URI uri) throws Exception {
         if (!repositories.containsKey(uri)) {
-            File file = manager.download(uri.toString()).await().getFile();
+            File file = getDownloadManager().download(uri.toString()).await().getFile();
             FeatureValidationUtil.validate(file.toURI());
             RepositoryImpl repo = new RepositoryImpl(uri);
             repositories.put(uri, repo);
@@ -482,7 +377,6 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
             }
         }
     }
-
 
 
     private Set<Feature> addFeatures(Collection<Feature> features, Collection<Repository> repositories) {
@@ -586,15 +480,15 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
                                 // if the checksum are different
                                 InputStream is = null;
                                 try {
-                                is = getBundleInputStream(res, downloads, infos);
-                                long newCrc = ChecksumUtils.checksum(is);
-                                long oldCrc = checksums.containsKey(bundle.getLocation()) ? Long.parseLong((String) checksums.get(bundle.getLocation())) : 0l;
-                                if (newCrc != oldCrc) {
-                                    LOGGER.debug("New snapshot available for " + bundle.getLocation());
-                                    update = true;
-                                    newCheckums.put(bundle.getLocation(), Long.toString(newCrc));
-                                }
-                                }finally {
+                                    is = getBundleInputStream(res, downloads, infos);
+                                    long newCrc = ChecksumUtils.checksum(is);
+                                    long oldCrc = checksums.containsKey(bundle.getLocation()) ? Long.parseLong((String) checksums.get(bundle.getLocation())) : 0l;
+                                    if (newCrc != oldCrc) {
+                                        LOGGER.debug("New snapshot available for " + bundle.getLocation());
+                                        update = true;
+                                        newCheckums.put(bundle.getLocation(), Long.toString(newCrc));
+                                    }
+                                } finally {
                                     if (is != null) {
                                         is.close();
                                     }
@@ -782,7 +676,6 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
     protected static InputStream getBundleInputStream(String uri, Map<String, File> downloads) throws IOException {
         InputStream is;
         File file;
-        FabBundleInfo info;
         if ((file = downloads.get(uri)) != null) {
             is = new FileInputStream(file);
         } else {
@@ -970,7 +863,7 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
         if (!url.startsWith("mvn:")) {
             throw new IllegalArgumentException("Framework url must use the mvn: protocol");
         }
-        File file = manager.download(url).await().getFile();
+        File file = getDownloadManager().download(url).await().getFile();
         String path = file.getPath();
         if (path.startsWith(System.getProperty("karaf.home"))) {
             path = path.substring(System.getProperty("karaf.home").length() + 1);
@@ -1003,7 +896,7 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
             //final String strippedLocation = location.startsWith(FAB_PROTOCOL) ? location.substring(FAB_PROTOCOL.length()) : location;
             //The Fab URL Handler may not be present so we strip the fab protocol before downloading.
             if (!location.startsWith(FAB_PROTOCOL)) {
-                manager.download(location).addListener(new FutureListener<DownloadFuture>() {
+                getDownloadManager().download(location).addListener(new FutureListener<DownloadFuture>() {
                     public void operationComplete(DownloadFuture future) {
                         try {
                             downloads.put(location, future.getFile());
@@ -1046,78 +939,6 @@ public class DeploymentAgent implements ManagedService, FrameworkListener {
                 refreshLock.wait(refreshTimeout);
             }
         }
-    }
-
-    protected synchronized ExecutorService getDownloadExecutor() {
-        if (downloadExecutor == null) {
-            if (executorServiceFinder == null) {
-                try {
-                    executorServiceFinder = new FelixExecutorServiceFinder();
-                    downloadExecutor = executorServiceFinder.find(bundleContext.getBundle());
-                } catch (Throwable t) {
-                    LOGGER.warn("Cannot find reference to MonitoringService. This exception will be ignored.", t);
-                }
-            }
-
-            if (downloadExecutor == null) {
-                LOGGER.info("Creating a new fixed thread pool for download manager.");
-                downloadExecutor = Executors.newFixedThreadPool(5);
-                // we created our own thread pool, so we should shutdown when stopping
-                shutdownDownloadExecutor = true;
-            } else {
-                LOGGER.info("Using Felix thread pool for download manager.");
-                // we re-use existing thread pool, so we should not shutdown
-                shutdownDownloadExecutor = false;
-            }
-        }
-        return downloadExecutor;
-    }
-
-    interface ExecutorServiceFinder {
-        public ExecutorService find(Bundle bundle);
-    }
-
-    class FelixExecutorServiceFinder implements ExecutorServiceFinder {
-        ServiceReference sr;
-
-        FelixExecutorServiceFinder() {
-            sr = bundleContext.getServiceReference(MonitoringService.class.getName());
-            if (sr == null) {
-                throw new UnsupportedOperationException();
-            }
-        }
-
-        public ExecutorService find(Bundle bundle) {
-            return ((MonitoringService) bundleContext.getService(sr)).getExecutor(bundle);
-        }
-    }
-
-    static class NamedThreadFactory implements ThreadFactory {
-        private static final AtomicInteger poolNumber = new AtomicInteger(1);
-        private final ThreadGroup group;
-        private final AtomicInteger threadNumber = new AtomicInteger(1);
-        private final String namePrefix;
-
-        NamedThreadFactory(String prefix) {
-            SecurityManager s = System.getSecurityManager();
-            group = (s != null) ? s.getThreadGroup() :
-                    Thread.currentThread().getThreadGroup();
-            namePrefix = prefix + "-" +
-                    poolNumber.getAndIncrement() +
-                    "-thread-";
-        }
-
-        public Thread newThread(Runnable r) {
-            Thread t = new Thread(group, r,
-                    namePrefix + threadNumber.getAndIncrement(),
-                    0);
-            if (t.isDaemon())
-                t.setDaemon(false);
-            if (t.getPriority() != Thread.NORM_PRIORITY)
-                t.setPriority(Thread.NORM_PRIORITY);
-            return t;
-        }
-
     }
 
     class FabricFabConfiguration extends PropertyStore implements Configuration {

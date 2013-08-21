@@ -52,138 +52,41 @@ import org.slf4j.LoggerFactory;
 
 import static org.fusesource.fabric.zookeeper.ZkPath.*;
 
-public class KarafContainerRegistration implements LifecycleListener, NotificationListener, ConfigurationListener {
+public class KarafContainerRegistration extends ContainerRegistration implements ConfigurationListener {
 
     private transient Logger logger = LoggerFactory.getLogger(KarafContainerRegistration.class);
 
     public static final String IP_REGEX = "([1-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])){3}";
     public static final String HOST_REGEX = "[a-zA-Z][a-zA-Z0-9\\-\\.]*[a-zA-Z]";
-    public static final String IP_OR_HOST_REGEX = "(("+IP_REGEX+")|("+HOST_REGEX+")|0.0.0.0)";
-    public static final String RMI_HOST_REGEX= "://" + IP_OR_HOST_REGEX;
-
-
+    public static final String IP_OR_HOST_REGEX = "((" + IP_REGEX + ")|(" + HOST_REGEX + ")|0.0.0.0)";
+    public static final String RMI_HOST_REGEX = "://" + IP_OR_HOST_REGEX;
 
     private ConfigurationAdmin configurationAdmin;
-    private IZKClient zooKeeper;
     private BundleContext bundleContext;
-    private final Set<String> domains = new CopyOnWriteArraySet<String>();
-    private volatile MBeanServer mbeanServer;
 
 
-    private ReentrantLock lock = new ReentrantLock();
-
-    public IZKClient getZooKeeper() {
-        return zooKeeper;
+    /**
+     * Returns the name of the container.
+     *
+     * @return
+     */
+    @Override
+    public String getContainerName() {
+        return System.getProperty("karaf.name");
     }
 
-    public void setZooKeeper(IZKClient zooKeeper) {
-        this.zooKeeper = zooKeeper;
-    }
-
-    public void setConfigurationAdmin(ConfigurationAdmin configurationAdmin) {
-        this.configurationAdmin = configurationAdmin;
-    }
-
-    public void setBundleContext(BundleContext bundleContext) {
-        this.bundleContext = bundleContext;
-    }
-
-    public void onConnected() {
-        String name = System.getProperty("karaf.name");
-        logger.trace("onConnected");
-        try {
-            lock.tryLock(10, TimeUnit.SECONDS);
-            String nodeAlive = CONTAINER_ALIVE.getPath(name);
-            Stat stat = zooKeeper.exists(nodeAlive);
-            if (stat != null) {
-                if (stat.getEphemeralOwner() != zooKeeper.getSessionId()) {
-                    zooKeeper.delete(nodeAlive);
-                    zooKeeper.createWithParents(nodeAlive, CreateMode.EPHEMERAL);
-                }
-            } else {
-                zooKeeper.createWithParents(nodeAlive, CreateMode.EPHEMERAL);
-            }
-
-            String domainsNode = CONTAINER_DOMAINS.getPath(name);
-            stat = zooKeeper.exists(domainsNode);
-            if (stat != null) {
-                zooKeeper.deleteWithChildren(domainsNode);
-            }
-
-            String jmxUrl = getJmxUrl();
-            if (jmxUrl != null) {
-                zooKeeper.createOrSetWithParents(CONTAINER_JMX.getPath(name), getJmxUrl(), CreateMode.PERSISTENT);
-            }
-            String sshUrl = getSshUrl();
-            if (sshUrl != null) {
-                zooKeeper.createOrSetWithParents(CONTAINER_SSH.getPath(name), getSshUrl(), CreateMode.PERSISTENT);
-            }
-
-            if (zooKeeper.exists(CONTAINER_RESOLVER.getPath(name)) == null) {
-                zooKeeper.createOrSetWithParents(CONTAINER_RESOLVER.getPath(name), getContainerResolutionPolicy(zooKeeper, name), CreateMode.PERSISTENT);
-            }
-            zooKeeper.createOrSetWithParents(CONTAINER_LOCAL_HOSTNAME.getPath(name), HostUtils.getLocalHostName(), CreateMode.PERSISTENT);
-            zooKeeper.createOrSetWithParents(CONTAINER_LOCAL_IP.getPath(name), HostUtils.getLocalIp(), CreateMode.PERSISTENT);
-            zooKeeper.createOrSetWithParents(CONTAINER_IP.getPath(name), getContainerPointer(zooKeeper, name), CreateMode.PERSISTENT);
-
-            //Check if there are addresses specified as system properties and use them if there is not an existing value in the registry.
-            //Mostly usable for adding values when creating containers without an existing ensemble.
-            for (String resolver : ZkDefs.VALID_RESOLVERS) {
-                String address = System.getProperty(resolver);
-                if (address != null && !address.isEmpty()) {
-                    if (zooKeeper.exists(CONTAINER_ADDRESS.getPath(name, resolver)) == null) {
-                        zooKeeper.createOrSetWithParents(CONTAINER_ADDRESS.getPath(name, resolver), address, CreateMode.PERSISTENT);
-                    }
-                }
-            }
-
-            //Set the port range values
-            String minimumPort = System.getProperty(ZkDefs.MINIMUM_PORT);
-            String maximumPort = System.getProperty(ZkDefs.MAXIMUM_PORT);
-            if (zooKeeper.exists(CONTAINER_PORT_MIN.getPath(name)) == null) {
-                zooKeeper.createOrSetWithParents(CONTAINER_PORT_MIN.getPath(name), minimumPort, CreateMode.PERSISTENT);
-            }
-
-            if (zooKeeper.exists(CONTAINER_PORT_MAX.getPath(name)) == null) {
-                zooKeeper.createOrSetWithParents(CONTAINER_PORT_MAX.getPath(name), maximumPort, CreateMode.PERSISTENT);
-            }
-
-            String version = System.getProperty("fabric.version", ZkDefs.DEFAULT_VERSION);
-            String profiles = System.getProperty("fabric.profiles");
-
-            if (profiles != null) {
-                String versionNode = CONFIG_CONTAINER.getPath(name);
-                String profileNode = CONFIG_VERSIONS_CONTAINER.getPath(version, name);
-
-                if (zooKeeper.exists(versionNode) == null) {
-                    zooKeeper.createOrSetWithParents(versionNode, version, CreateMode.PERSISTENT);
-                }
-                if (zooKeeper.exists(profileNode) == null) {
-                    zooKeeper.createOrSetWithParents(profileNode, profiles, CreateMode.PERSISTENT);
-                }
-            }
-            registerDomains();
-        } catch (Exception e) {
-            logger.warn("Error updating Fabric Container information. This exception will be ignored.", e);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private String getJmxUrl() throws IOException {
-        String name = System.getProperty("karaf.name");
+    public String getJmxUrl(String name) throws IOException {
         Configuration config = configurationAdmin.getConfiguration("org.apache.karaf.management");
         if (config.getProperties() != null) {
             String jmx = (String) config.getProperties().get("serviceUrl");
-            jmx = replaceJmxHost(jmx, "\\${zk:"+name+"/ip}");
+            jmx = replaceJmxHost(jmx, "\\${zk:" + name + "/ip}");
             return jmx;
         } else {
             return null;
         }
     }
 
-    private String getSshUrl() throws IOException {
-        String name = System.getProperty("karaf.name");
+    public String getSshUrl(String name) throws IOException {
         Configuration config = configurationAdmin.getConfiguration("org.apache.karaf.shell");
         if (config != null && config.getProperties() != null) {
             String port = (String) config.getProperties().get("sshPort");
@@ -193,171 +96,54 @@ public class KarafContainerRegistration implements LifecycleListener, Notificati
         }
     }
 
-    /**
-     * Returns the global resolution policy.
-     *
-     * @param zookeeper
-     * @return
-     * @throws InterruptedException
-     * @throws KeeperException
-     */
-    private static String getGlobalResolutionPolicy(IZKClient zookeeper) throws InterruptedException, KeeperException {
-        String policy = ZkDefs.LOCAL_HOSTNAME;
-        List<String> validResoverList = Arrays.asList(ZkDefs.VALID_RESOLVERS);
-        if (zookeeper.exists(ZkPath.POLICIES.getPath(ZkDefs.RESOLVER)) != null) {
-            policy = zookeeper.getStringData(ZkPath.POLICIES.getPath(ZkDefs.RESOLVER));
-        } else if (System.getProperty(ZkDefs.GLOBAL_RESOLVER_PROPERTY) != null && validResoverList.contains(System.getProperty(ZkDefs.GLOBAL_RESOLVER_PROPERTY))) {
-            policy = System.getProperty(ZkDefs.GLOBAL_RESOLVER_PROPERTY);
-            zookeeper.createOrSetWithParents(ZkPath.POLICIES.getPath("resolver"), policy, CreateMode.PERSISTENT);
-        }
-        return policy;
-    }
 
-    /**
-     * Returns the container specific resolution policy.
-     *
-     * @param zookeeper
-     * @return
-     * @throws InterruptedException
-     * @throws KeeperException
-     */
-    private static String getContainerResolutionPolicy(IZKClient zookeeper, String container) throws InterruptedException, KeeperException {
-        String policy = null;
-        List<String> validResoverList = Arrays.asList(ZkDefs.VALID_RESOLVERS);
-        if (zookeeper.exists(ZkPath.CONTAINER_RESOLVER.getPath(container)) != null) {
-            policy = zookeeper.getStringData(ZkPath.CONTAINER_RESOLVER.getPath(container));
-        } else if (System.getProperty(ZkDefs.LOCAL_RESOLVER_PROPERTY) != null && validResoverList.contains(System.getProperty(ZkDefs.LOCAL_RESOLVER_PROPERTY))) {
-            policy = System.getProperty(ZkDefs.LOCAL_RESOLVER_PROPERTY);
-        }
-
-        if (policy == null) {
-            policy = getGlobalResolutionPolicy(zookeeper);
-        }
-
-        if (policy != null && zookeeper.exists(ZkPath.CONTAINER_RESOLVER.getPath(container)) == null) {
-            zookeeper.createOrSetWithParents(ZkPath.CONTAINER_RESOLVER.getPath(container), policy, CreateMode.PERSISTENT);
-        }
-        return policy;
-    }
-
-    /**
-     * Returns a pointer to the container IP based on the global IP policy.
-     *
-     * @param zookeeper The zookeeper client to use to read global policy.
-     * @param container The name of the container.
-     * @return
-     * @throws InterruptedException
-     * @throws KeeperException
-     */
-    private static String getContainerPointer(IZKClient zookeeper, String container) throws InterruptedException, KeeperException {
-        String pointer = "${zk:%s/%s}";
-        String policy = getContainerResolutionPolicy(zookeeper, container);
-        return String.format(pointer, container, policy);
-    }
-
-
-    private static String getExternalAddresses(String host, String port) throws UnknownHostException, SocketException {
-        InetAddress ip = InetAddress.getByName(host);
-        if (ip.isAnyLocalAddress()) {
-            return HostUtils.getLocalHostName() + ":" + port;
-        } else if (!ip.isLoopbackAddress()) {
-            return ip.getHostName() + ":" + port;
-        }
-        return null;
-    }
-
-    public void destroy() {
-        logger.trace("destroy");
+    public synchronized void registerMBeanServer(ServiceReference ref) {
         try {
-            unregisterDomains();
-        } catch (ServiceException e) {
-            logger.trace("ZooKeeper is no longer available", e);
-        } catch (Exception e) {
-            logger.warn("An error occurred during disconnecting to zookeeper. This exception will be ignored.", e);
-        }
-    }
-
-    public void onDisconnected() {
-        logger.trace("onDisconnected");
-        // noop
-    }
-
-    public void registerMBeanServer(ServiceReference ref) {
-        try {
-            lock.lock();
             String name = System.getProperty("karaf.name");
-            mbeanServer = (MBeanServer) bundleContext.getService(ref);
-            if (mbeanServer != null) {
-                mbeanServer.addNotificationListener(new ObjectName("JMImplementation:type=MBeanServerDelegate"), this, null, name);
+            setMbeanServer((MBeanServer) bundleContext.getService(ref));
+            if (getMbeanServer() != null) {
+                getMbeanServer().addNotificationListener(new ObjectName("JMImplementation:type=MBeanServerDelegate"), this, null, name);
                 registerDomains();
             }
         } catch (Exception e) {
             logger.warn("An error occurred during mbean server registration. This exception will be ignored.", e);
-        } finally {
-            lock.unlock();
         }
     }
 
-    public void unregisterMBeanServer(ServiceReference ref) {
-        if (mbeanServer != null) {
+    public synchronized void unregisterMBeanServer(ServiceReference ref) {
+        if (getMbeanServer() != null) {
             try {
-                lock.lock();
-                mbeanServer.removeNotificationListener(new ObjectName("JMImplementation:type=MBeanServerDelegate"), this);
+                getMbeanServer().removeNotificationListener(new ObjectName("JMImplementation:type=MBeanServerDelegate"), this);
                 unregisterDomains();
             } catch (Exception e) {
                 logger.warn("An error occurred during mbean server unregistration. This exception will be ignored.", e);
-            } finally {
-                lock.unlock();
             }
         }
-        mbeanServer = null;
+        setMbeanServer(null);
         bundleContext.ungetService(ref);
     }
 
-    protected void registerDomains() throws InterruptedException, KeeperException {
-        if (isConnected() && mbeanServer != null) {
-            String name = System.getProperty("karaf.name");
-            domains.addAll(Arrays.asList(mbeanServer.getDomains()));
-            for (String domain : mbeanServer.getDomains()) {
-                zooKeeper.createOrSetWithParents(CONTAINER_DOMAIN.getPath(name, domain), (byte[]) null, CreateMode.PERSISTENT);
-            }
-        }
-    }
-
-    protected void unregisterDomains() throws InterruptedException, KeeperException {
-        if (isConnected()) {
-            String name = System.getProperty("karaf.name");
-            String domainsPath = CONTAINER_DOMAINS.getPath(name);
-            if (zooKeeper.exists(domainsPath) != null) {
-                for (String child : zooKeeper.getChildren(domainsPath)) {
-                    zooKeeper.delete(domainsPath + "/" + child);
-                }
-            }
-        }
-    }
-
     @Override
-    public void handleNotification(Notification notif, Object o) {
+    public synchronized void handleNotification(Notification notif, Object o) {
         logger.trace("handleNotification[{}]", notif);
 
         // we may get notifications when zookeeper client is not really connected
         // handle mbeans registration and de-registration events
-        if (isConnected() && mbeanServer != null && notif instanceof MBeanServerNotification) {
+        if (isConnected() && getMbeanServer() != null && notif instanceof MBeanServerNotification) {
             MBeanServerNotification notification = (MBeanServerNotification) notif;
             String domain = notification.getMBeanName().getDomain();
             String path = CONTAINER_DOMAIN.getPath((String) o, domain);
             try {
-                lock.lock();
                 if (MBeanServerNotification.REGISTRATION_NOTIFICATION.equals(notification.getType())) {
-                    if (domains.add(domain) && zooKeeper.exists(path) == null) {
-                        zooKeeper.createOrSetWithParents(path, "", CreateMode.PERSISTENT);
+                    if (getDomains().add(domain) && getZooKeeper().exists(path) == null) {
+                        getZooKeeper().createOrSetWithParents(path, "", CreateMode.PERSISTENT);
                     }
                 } else if (MBeanServerNotification.UNREGISTRATION_NOTIFICATION.equals(notification.getType())) {
-                    domains.clear();
-                    domains.addAll(Arrays.asList(mbeanServer.getDomains()));
-                    if (!domains.contains(domain)) {
+                    getDomains().clear();
+                    getDomains().addAll(Arrays.asList(getMbeanServer().getDomains()));
+                    if (!getDomains().contains(domain)) {
                         // domain is no present any more
-                        zooKeeper.delete(path);
+                        getZooKeeper().delete(path);
                     }
                 }
 //            } catch (KeeperException.SessionExpiredException e) {
@@ -365,14 +151,13 @@ public class KarafContainerRegistration implements LifecycleListener, Notificati
 //                handleNotification(notif, o);
             } catch (Exception e) {
                 logger.warn("Exception while jmx domain synchronization from event: " + notif + ". This exception will be ignored.", e);
-            } finally {
-                lock.unlock();
             }
         }
     }
 
     /**
      * Replaces hostname/ip occurances inside the jmx url, with the specified hostname
+     *
      * @param jmxUrl
      * @param hostName
      * @return
@@ -381,13 +166,13 @@ public class KarafContainerRegistration implements LifecycleListener, Notificati
         if (jmxUrl == null) {
             return null;
         }
-        return jmxUrl.replaceAll(RMI_HOST_REGEX,  "://" + hostName);
+        return jmxUrl.replaceAll(RMI_HOST_REGEX, "://" + hostName);
     }
 
 
     private boolean isConnected() {
         // we are only considered connected if we have a client and its connected
-        return zooKeeper != null && zooKeeper.isConnected();
+        return getZooKeeper() != null && getZooKeeper().isConnected();
     }
 
     /**
@@ -398,23 +183,39 @@ public class KarafContainerRegistration implements LifecycleListener, Notificati
     @Override
     public void configurationEvent(ConfigurationEvent event) {
         try {
-            if (zooKeeper.isConnected()) {
-                String name = System.getProperty("karaf.name");
+            if (getZooKeeper().isConnected()) {
+                String name = getContainerName();
                 if (event.getPid().equals("org.apache.karaf.shell") && event.getType() == ConfigurationEvent.CM_UPDATED) {
-                    String sshUrl = getSshUrl();
+                    String sshUrl = getSshUrl(name);
                     if (sshUrl != null) {
-                        zooKeeper.createOrSetWithParents(CONTAINER_SSH.getPath(name), getSshUrl(), CreateMode.PERSISTENT);
+                        getZooKeeper().createOrSetWithParents(CONTAINER_SSH.getPath(name), sshUrl, CreateMode.PERSISTENT);
                     }
                 }
                 if (event.getPid().equals("org.apache.karaf.management") && event.getType() == ConfigurationEvent.CM_UPDATED) {
-                    String jmxUrl = getJmxUrl();
+                    String jmxUrl = getJmxUrl(name);
                     if (jmxUrl != null) {
-                        zooKeeper.createOrSetWithParents(CONTAINER_JMX.getPath(name), getJmxUrl(), CreateMode.PERSISTENT);
+                        getZooKeeper().createOrSetWithParents(CONTAINER_JMX.getPath(name), jmxUrl, CreateMode.PERSISTENT);
                     }
                 }
             }
         } catch (Exception e) {
 
         }
+    }
+
+    public ConfigurationAdmin getConfigurationAdmin() {
+        return configurationAdmin;
+    }
+
+    public void setConfigurationAdmin(ConfigurationAdmin configurationAdmin) {
+        this.configurationAdmin = configurationAdmin;
+    }
+
+    public BundleContext getBundleContext() {
+        return bundleContext;
+    }
+
+    public void setBundleContext(BundleContext bundleContext) {
+        this.bundleContext = bundleContext;
     }
 }

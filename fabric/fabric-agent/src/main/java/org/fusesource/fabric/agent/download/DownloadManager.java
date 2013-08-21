@@ -19,6 +19,9 @@ package org.fusesource.fabric.agent.download;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import org.fusesource.fabric.agent.mvn.MavenConfiguration;
@@ -35,20 +38,19 @@ public class DownloadManager {
      * Service configuration.
      */
     private final MavenConfiguration configuration;
+    private final MavenRepositoryURL localRepository;
+    private final Set<MavenRepositoryURL> repositoryUrls = new LinkedHashSet<MavenRepositoryURL>();
 
-    private final MavenRepositoryURL cache;
-
-    private final MavenRepositoryURL system;
-
-    public DownloadManager(MavenConfiguration configuration) throws MalformedURLException {
-        this(configuration, null);
-    }
 
     public DownloadManager(MavenConfiguration configuration, ExecutorService executor) throws MalformedURLException {
+        this(configuration, executor, configuration.getLocalRepository(), new LinkedHashSet<MavenRepositoryURL>());
+    }
+
+    public DownloadManager(MavenConfiguration configuration, ExecutorService executor, MavenRepositoryURL localRepository, Collection<MavenRepositoryURL> repos) throws MalformedURLException {
         this.configuration = configuration;
         this.executor = executor;
-        this.cache = new MavenRepositoryURL("file://" + System.getProperty("karaf.data") + "/maven/agent" + "@snapshots");
-        this.system = new MavenRepositoryURL("file://" + System.getProperty("karaf.home") + "/system" + "@snapshots");
+        this.localRepository = localRepository;
+        this.repositoryUrls.addAll(repos);
     }
 
     public void shutdown() {
@@ -73,7 +75,7 @@ public class DownloadManager {
             mvnUrl = mvnUrl.substring(mvnUrl.indexOf(':') + 1);
         }
         if (mvnUrl.startsWith("mvn:")) {
-            MavenDownloadTask task = new MavenDownloadTask(mvnUrl, cache, system, configuration, executor);
+            MavenDownloadTask task = new MavenDownloadTask(mvnUrl, configuration, executor, localRepository, repositoryUrls);
             executor.submit(task);
             if (!mvnUrl.equals(url)) {
                 final DummyDownloadTask download = new DummyDownloadTask(url, executor);

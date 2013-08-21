@@ -56,22 +56,24 @@ public class MavenDownloadTask extends AbstractDownloadTask implements Runnable 
      */
     private static final String Ix4 = "    ";
 
-    private final MavenRepositoryURL cache;
-    private final MavenRepositoryURL system;
     private final MavenConfiguration configuration;
+    private final MavenRepositoryURL localRepository;
+    private final Set<MavenRepositoryURL> repositoryUrls = new LinkedHashSet<MavenRepositoryURL>();
 
-    public MavenDownloadTask(String url, MavenRepositoryURL cache, MavenRepositoryURL system, MavenConfiguration configuration, ExecutorService executor) {
+    public MavenDownloadTask(String url, MavenConfiguration configuration, ExecutorService executor, MavenRepositoryURL localRepository, Collection<MavenRepositoryURL> repos) {
         super(url, executor);
-        this.cache = cache;
-        this.system = system;
         this.configuration = configuration;
+        this.localRepository = localRepository;
+        this.repositoryUrls.addAll(repos);
     }
 
     protected File download() throws Exception {
         Parser parser = new Parser(url.substring("mvn:".length()));
         Set<DownloadableArtifact> downloadables;
         if (!parser.getVersion().contains("SNAPSHOT")) {
-            downloadables = doCollectPossibleDownloads(parser, Arrays.asList(cache, system, configuration.getLocalRepository()));
+            List<MavenRepositoryURL> repositories = new ArrayList<MavenRepositoryURL>();
+            repositories.add(configuration.getLocalRepository());
+            downloadables = doCollectPossibleDownloads(parser, repositories);
             for (DownloadableArtifact artifact : downloadables) {
                 URL url = artifact.getArtifactURL();
                 File file = new File(url.getFile());
@@ -91,7 +93,7 @@ public class MavenDownloadTask extends AbstractDownloadTask implements Runnable 
             LOG.trace("Downloading [" + artifact + "]");
             try {
                 configuration.enableProxy(artifact.getArtifactURL());
-                String repository = cache.getFile().getAbsolutePath();
+                String repository = localRepository.getFile().getAbsolutePath();
                 if (!repository.endsWith(Parser.FILE_SEPARATOR)) {
                     repository = repository + Parser.FILE_SEPARATOR;
                 }
@@ -136,8 +138,6 @@ public class MavenDownloadTask extends AbstractDownloadTask implements Runnable 
         final List<MavenRepositoryURL> repositories = new ArrayList<MavenRepositoryURL>();
         repositories.addAll(configuration.getRepositories());
         repositories.add(configuration.getLocalRepository());
-        repositories.add(system);
-        repositories.add(cache);
         // if the url contains a preferred repository add that repository as the first repository to be searched
         if (parser.getRepositoryURL() != null) {
             repositories.add(

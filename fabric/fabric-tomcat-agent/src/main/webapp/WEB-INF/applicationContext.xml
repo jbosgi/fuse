@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="propertyPlaceholderConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer" />
+
+
+    <bean id="zkClient" class="org.fusesource.fabric.zookeeper.spring.ZKClientFactoryBean">
+        <property name="timeoutText" value="30s"/>
+        <property name="connectString" value="${zookeeper.url}"/>
+        <property name="password" value="${zookeeper.password}"/>
+    </bean>
+
+    <bean id="mbeanServer" class="org.springframework.jmx.support.MBeanServerFactoryBean">
+        <!-- indicate to first look for a server -->
+        <property name="locateExistingServerIfPossible" value="true"/>
+    </bean>
+
+    <bean id="tomcatRegistration" class="org.fusesource.fabric.tomcat.agent.TomcatContainerRegistration" init-method="init" destroy-method="destroy">
+        <property name="zooKeeper" ref="zkClient"/>
+        <property name="mbeanServer" ref="mbeanServer"/>
+    </bean>
+
+    <bean id="deploymentAgent" class="org.fusesource.fabric.tomcat.agent.TomcatDeploymentAgent" init-method="start" destroy-method="stop">
+        <property name="zooKeeper" ref="zkClient"/>
+    </bean>
+
+    <bean id="configurationBridge" class="org.fusesource.fabric.tomcat.agent.ConfigurationBridge" init-method="init" destroy-method="destroy">
+        <property name="zooKeeper" ref="zkClient"/>
+        <property name="agent" ref="deploymentAgent"/>
+        <property name="name" value="${tomcat.name}"/>
+    </bean>
+
+
+</beans>
