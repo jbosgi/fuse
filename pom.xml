@@ -215,6 +215,10 @@
         <mvel-version>2.1.4.Final</mvel-version>
         <mvnplugins-version>1.14</mvnplugins-version>
         <openshift.client.version>2.1.0</openshift.client.version>
+<!--
+        <openshift.client.version>2.1.0-beta1</openshift.client.version>
+-->
+        <openshift.client.groupId>com.openshift</openshift.client.groupId>
         <ops4j-base.version>1.4.0</ops4j-base.version>
         <ops4j-pax-swissbox-bnd.version>1.6.0</ops4j-pax-swissbox-bnd.version>
         <ops4j-pax-swissbox-property.version>1.6.0</ops4j-pax-swissbox-property.version>
@@ -628,7 +632,7 @@
             <dependency>
               <groupId>org.fusesource.fabric</groupId>
               <artifactId>fabric-api</artifactId>
-              <version>${project.version}</version>
+              <version>${fabric.version}</version>
               <scope>provided</scope>
             </dependency>
             <dependency>
@@ -652,13 +656,13 @@
             <dependency>
                 <groupId>org.fusesource.fabric</groupId>
                 <artifactId>fabric-core-agent-ssh</artifactId>
-                <version>${project.version}</version>
+                <version>${fabric.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.fusesource.fabric</groupId>
                 <artifactId>fabric-core-agent-jclouds</artifactId>
-                <version>${project.version}</version>
+                <version>${fabric.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
