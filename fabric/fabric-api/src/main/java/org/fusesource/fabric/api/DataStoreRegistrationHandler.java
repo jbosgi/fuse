@@ -14,12 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.groups;
+package org.fusesource.fabric.api;
 
-public interface GroupFactory {
+public interface DataStoreRegistrationHandler {
 
-    <T> Group<T> createGroup(String path, Class<T> clazz);
+    /**
+     * Adds a {@link DataStoreTemplate} that will be executed before {@link DataStore} registration.
+     * @param template
+     */
+    public void addRegistrationCallback(DataStoreTemplate template);
 
-    <T> Group<T> createMultiGroup(String path, Class<T> clazz);
-
+    /**
+     * Removes a {@link DataStoreTemplate} from initialization phase.
+     * @param template
+     */
+    public void removeRegistrationCallback(DataStoreTemplate template);
 }

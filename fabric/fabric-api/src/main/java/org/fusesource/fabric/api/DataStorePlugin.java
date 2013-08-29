@@ -14,12 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.fusesource.fabric.groups;
+package org.fusesource.fabric.api;
 
-public interface GroupFactory {
 
-    <T> Group<T> createGroup(String path, Class<T> clazz);
+/**
+ * An interface that describes DataStore plugins.
+ * The plugins are published in the OSGi registry using this interface, so that the {@link DataStoreRegistrationHandler}
+ * can register the appropriate {@link DataStore} in the Service Registry based on its configuration.
+ */
+public interface DataStorePlugin<T extends DataStore> {
 
-    <T> Group<T> createMultiGroup(String path, Class<T> clazz);
+    /**
+     * Return the DataStore name.
+     * @return
+     */
+    String getName();
 
+    /**
+     * Return the {@link DataStore} instance this plugin provides.
+     * @return
+     */
+    T getDataStore();
 }
