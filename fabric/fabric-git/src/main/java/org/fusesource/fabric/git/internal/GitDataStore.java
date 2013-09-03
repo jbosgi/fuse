@@ -18,6 +18,7 @@ package org.fusesource.fabric.git.internal;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,6 +34,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -105,6 +108,11 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
     private static final String PROFILE_ATTRIBUTES_PID = "org.fusesource.fabric.datastore";
     private static final String CONTAINER_CONFIG_PID = "org.fusesource.fabric.agent";
 
+    private static final String GIT_PULL_PERIOD = "gitPullPeriod";
+    private static final String GIT_REMOTE_URL = "gitRemoteUrl";
+    private static final String GIT_REMOTE_USER = "gitRemoteUser";
+    private static final String GIT_REMOTE_PASSWORD = "gitRemotePassword";
+
     private static final String MASTER_BRANCH = "master";
     private static final String CONFIG_ROOT_DIR = "fabric";
 
@@ -141,6 +149,8 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
             pull();
         }
     };
+
+    private String gitRemoteUrl;
     private long pullPeriod = 1000;
 
     private ScheduledExecutorService threadPool;
@@ -162,17 +172,25 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
     public synchronized void start() {
         try {
             super.start();
-
-            if (gitService != null) {
-                gitService.addRemoteChangeListener(remoteChangeListener);
+            Properties properties = getDataStoreProperties();
+            if (properties != null) {
+                this.pullPeriod = PropertiesHelper.getLongValue(properties, GIT_PULL_PERIOD, this.pullPeriod);
+                this.gitRemoteUrl = properties.getProperty(GIT_REMOTE_URL);
             }
+
+            if (gitRemoteUrl != null) {
+                remoteChangeListener.onRemoteUrlChanged(gitRemoteUrl);
+            } else if (gitService != null) {
+                gitService.addRemoteChangeListener(remoteChangeListener);
+                gitRemoteUrl = gitService.getRemoteUrl();
+                remoteChangeListener.onRemoteUrlChanged(gitRemoteUrl);
+                pull();
+            }
+
             if (threadPool == null) {
                 this.threadPool = Executors.newSingleThreadScheduledExecutor();
             }
-            Properties properties = getDataStoreProperties();
-            if (properties != null) {
-                this.pullPeriod = PropertiesHelper.getLongValue(properties, "gitPullPeriod", this.pullPeriod);
-            }
+
             LOG.info("starting to pull from remote repository every " + pullPeriod + " millis");
             threadPool.scheduleWithFixedDelay(new Runnable() {
                 @Override
@@ -794,7 +812,6 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
             try {
                 Git git = getGit();
                 Repository repository = git.getRepository();
-                String originalBranch = repository.getBranch();
                 CredentialsProvider credentialsProvider = getCredentialsProvider();
                 // lets default the identity if none specified
                 if (personIdent == null) {
@@ -809,7 +826,10 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
                 if (pullFirst) {
                     doPull(git, credentialsProvider);
                 }
+
+                String originalBranch = repository.getBranch();
                 RevCommit statusBefore = CommitUtils.getHead(repository);
+
                 GitContext context = new GitContext();
                 T answer = operation.call(git, context);
                 boolean requirePush = context.isRequirePush();
@@ -824,7 +844,6 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
 
                 git.checkout().setName(originalBranch).call();
                 if (requirePush || hasChanged(statusBefore, CommitUtils.getHead(repository))) {
-                    doPush(git, context, credentialsProvider);
                     fireChangeNotifications();
                 }
                 return answer;
@@ -876,10 +895,39 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
     }
 
     protected CredentialsProvider getCredentialsProvider() throws Exception {
-        String login = getContainerLogin();
-        String token = generateContainerToken(getCurator());
-        return new UsernamePasswordCredentialsProvider(login, token);
+        Properties properties = getDataStoreProperties();
+        String username = null;
+        String password = null;
+        if (isExternalGitConfigured(properties)) {
+            username = getExternalUser(properties);
+            password = getExternalCredential(properties);
+
+        } else {
+            username = getContainerLogin();
+            password = generateContainerToken(getCurator());
+        }
+        return new UsernamePasswordCredentialsProvider(username, password);
     }
+
+    /**
+     * Check if the datastore has been configured with an external git repository.
+     * @param properties
+     * @return
+     */
+    private boolean isExternalGitConfigured(Properties properties) {
+        return properties != null
+                && properties.containsKey(GIT_REMOTE_USER)
+                && properties.containsKey(GIT_REMOTE_PASSWORD);
+    }
+
+    private String getExternalUser(Properties properties) {
+        return properties.getProperty(GIT_REMOTE_USER);
+    }
+
+    private String getExternalCredential(Properties properties) throws IOException {
+       return properties.getProperty(GIT_REMOTE_PASSWORD);
+    }
+
 
     /**
      * Performs a pull so the git repo is pretty much up to date before we start performing operations on it
@@ -915,9 +963,7 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
                                 + url);
             }
 
-
-            RevCommit statusBefore = CommitUtils.getHead(repository);
-
+            boolean hasChanged = false;
             try {
                 git.fetch().setCredentialsProvider(credentialsProvider).setRemote(remote).call();
             } catch (Exception e) {
@@ -954,11 +1000,13 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
                         git.checkout().setName(MASTER_BRANCH).setForce(true).call();
                         git.branchDelete().setBranchNames(localBranches.get(version).getName()).setForce(true).call();
                     }
+                    hasChanged = true;
                 }
                 // Create new local branches
                 else if (!localBranches.containsKey(version)) {
                     git.branchCreate().setName(version).call();
                     git.reset().setMode(ResetCommand.ResetType.HARD).setRef(remoteBranches.get(version).getName()).call();
+                    hasChanged = true;
                 } else {
                     String localCommit = localBranches.get(version).getObjectId().getName();
                     String remoteCommit = remoteBranches.get(version).getObjectId().getName();
@@ -967,12 +1015,14 @@ public class GitDataStore extends DataStoreSupport implements DataStorePlugin<Gi
                         git.checkout().setName("HEAD").setForce(true).call();
                         git.checkout().setName(version).setForce(true).call();
                         MergeResult result = git.merge().setStrategy(MergeStrategy.THEIRS).include(remoteBranches.get(version).getObjectId()).call();
+                        if (result.getMergeStatus() != MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
+                            hasChanged = true;
+                        }
                         // TODO: handle conflicts
                     }
                 }
             }
-            RevCommit statusAfter = CommitUtils.getHead(repository);
-            if (hasChanged(statusBefore, statusAfter)) {
+            if (hasChanged) {
                 LOG.debug("Changed after pull!");
                 if (credentialsProvider != null) {
                     // TODO lets test if the profiles directory is present after checking out version 1.0?
