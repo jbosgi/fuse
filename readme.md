@@ -69,22 +69,30 @@ Running Fuse Fabric on OpenShift
 
 If you want to try out Fuse on OpenShift here's the current instructions:
 
-### 1 Create a Fabric Registry (based on EA 6.1 build of Fuse).
+### 1 Create a Fuse Registry (based on EA 6.1 build of Fuse).
 
     rhc create-app registry https://raw.github.com/jboss-fuse/fuse-registry-openshift-cartridge/master/metadata/manifest.yml
 
 This will output the generated password for fabric and also the http
-url for hawtio. You can log in using admin/<generated password>.
+url for hawtio.
 
-You can then login to your registry at: http://registry-$USERID.rhcloud.com/hawtio/ where $USERID is your openshift account name.
+You can then login to your registry at: **http://registry-$USERID.rhcloud.com/hawtio/** where $USERID is your openshift account name. Use the following login:
 
-### 2 Create additional Fabric Containers
+```
+user:     admin
+password: $generatedPassword
+```
 
-    rhc create-app myfuse https://raw.github.com/jboss-fuse/fuse-openshift-cartridge/master/metadata/manifest.yml
+### 2 Open the **Fabric** tab and you should be able to see the containers running (only 1 at the moment).
 
-This will just create a plain fabric container (will not join it to
-the cluster. This is an openshift limitation)
+### 3 click on the + icon on the Containers tab to add a new container using the openshift creation form
 
-### 3 Join the container to the Fabric Cluster
+Enter something like these details:
 
-    rhc cartridge-add --app myfuse https://raw.github.com/jboss-fuse/fuse-client-openshift-cartridge/master/metadata/manifest.yml
+```
+name:      someContainerName
+serverUrl: openshift.redhat.com
+domain:    mydomain
+login:     myname@foo.com
+password:  *********
+```
