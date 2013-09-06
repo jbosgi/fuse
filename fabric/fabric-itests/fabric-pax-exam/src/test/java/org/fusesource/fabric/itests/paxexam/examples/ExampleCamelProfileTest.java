@@ -20,8 +20,8 @@ package org.fusesource.fabric.itests.paxexam.examples;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.fusesource.fabric.api.Container;
-import org.fusesource.fabric.itests.paxexam.FabricTestSupport;
 import org.fusesource.fabric.itests.paxexam.support.ContainerBuilder;
+import org.fusesource.fabric.itests.paxexam.support.FabricTestSupport;
 import org.fusesource.fabric.itests.paxexam.support.Provision;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.junit.After;
@@ -61,14 +61,14 @@ public class ExampleCamelProfileTest extends FabricTestSupport {
 
         setData(curator, ZkPath.CONTAINER_PROVISION_RESULT.getPath(brokerContainer.getId()), "changing");
         System.err.println(executeCommand("fabric:container-change-profile " + brokerContainer.getId() + " mq"));
-        Provision.assertSuccess(Arrays.asList(new Container[]{brokerContainer}), PROVISION_TIMEOUT);
+        Provision.provisioningSuccess(Arrays.asList(new Container[]{brokerContainer}), PROVISION_TIMEOUT);
         System.err.println(executeCommand("fabric:cluster-list"));
 
         for(Container c : containers) {
             setData(curator, ZkPath.CONTAINER_PROVISION_RESULT.getPath(c.getId()), "changing");
             System.err.println(executeCommand("fabric:container-change-profile " + c.getId() + " example-camel"));
         }
-        Provision.assertSuccess(containers, PROVISION_TIMEOUT);
+        Provision.provisioningSuccess(containers, PROVISION_TIMEOUT);
 
         int completedCount = 0;
         Thread.sleep(5000);

@@ -2,6 +2,7 @@ package org.fusesource.fabric.itests.paxexam;
 
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.itests.paxexam.support.ContainerBuilder;
+import org.fusesource.fabric.itests.paxexam.support.FabricTestSupport;
 import org.fusesource.fabric.itests.paxexam.support.Provision;
 import org.junit.After;
 import org.junit.Ignore;
@@ -64,7 +65,7 @@ public class DeploymentAgentTest extends FabricTestSupport {
 			System.out.println(executeCommand("fabric:container-upgrade 1.1 " + container.getId()));
 			System.out.flush();
 		}
-		Provision.assertSuccess(containers, PROVISION_TIMEOUT);
+		Provision.provisioningSuccess(containers, PROVISION_TIMEOUT);
 		System.out.println(executeCommand("fabric:container-list"));
 
 		for (Container container : containers) {
@@ -101,7 +102,7 @@ public class DeploymentAgentTest extends FabricTestSupport {
 			System.out.println(executeCommand("fabric:container-upgrade 1.1 " + container.getId()));
 			System.out.flush();
 		}
-		Provision.assertSuccess(containers, PROVISION_TIMEOUT);
+		Provision.provisioningSuccess(containers, PROVISION_TIMEOUT);
 		System.out.println(executeCommand("fabric:container-list"));
 
 		for (Container container : containers) {
@@ -141,7 +142,7 @@ public class DeploymentAgentTest extends FabricTestSupport {
 			System.out.println(executeCommand("fabric:container-upgrade 1.1 " + container.getId()));
 			System.out.flush();
 		}
-		Provision.assertSuccess(containers, PROVISION_TIMEOUT);
+		Provision.provisioningSuccess(containers, PROVISION_TIMEOUT);
 		System.out.println(executeCommand("fabric:container-list"));
 
 		for (Container container : containers) {

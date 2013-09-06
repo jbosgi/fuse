@@ -17,6 +17,7 @@
 package org.fusesource.fabric.itests.paxexam;
 
 import org.fusesource.fabric.api.Container;
+import org.fusesource.fabric.itests.paxexam.support.FabricTestSupport;
 import org.fusesource.fabric.utils.SystemProperties;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +43,7 @@ public class ContainerStartupTest extends FabricTestSupport {
 
     @Test
     public void testLocalFabricCluster() throws Exception {
-        executeCommand("fabric:create -n --clean root");
+        System.out.println(executeCommand("fabric:create -n --clean root"));
         //Wait for zookeeper service to become available.
         Container[] containers = getFabricService().getContainers();
 
@@ -61,7 +62,7 @@ public class ContainerStartupTest extends FabricTestSupport {
 
     @Test
     public void testLocalFabricClusterWithPassword() throws Exception {
-        executeCommand("fabric:create -n --clean --zookeeper-password testpassword root");
+        System.out.println(executeCommand("fabric:create -n --clean --zookeeper-password testpassword root"));
 
         //Wait for zookeeper service to become available.
         Container[] containers = getFabricService().getContainers();

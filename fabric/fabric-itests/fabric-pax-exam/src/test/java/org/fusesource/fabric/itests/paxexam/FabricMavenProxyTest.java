@@ -29,6 +29,7 @@ import org.apache.http.nio.entity.FileNIOEntity;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.itests.paxexam.support.ContainerBuilder;
+import org.fusesource.fabric.itests.paxexam.support.FabricTestSupport;
 import org.fusesource.fabric.itests.paxexam.support.Provision;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.junit.After;
@@ -98,7 +99,7 @@ public class FabricMavenProxyTest extends FabricTestSupport {
 
         System.err.println(executeCommand("fabric:profile-edit --repositories mvn:itest/itest/1.0/xml/features default"));
         System.err.println(executeCommand("fabric:profile-edit --features example-cbr default"));
-        Provision.waitForContainerStatus(containers, PROVISION_TIMEOUT);
+        Provision.containerStatus(containers, PROVISION_TIMEOUT);
     }
 
 

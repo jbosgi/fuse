@@ -20,6 +20,7 @@ package org.fusesource.fabric.itests.paxexam;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.itests.paxexam.support.ContainerBuilder;
+import org.fusesource.fabric.itests.paxexam.support.FabricTestSupport;
 import org.fusesource.fabric.itests.paxexam.support.Provision;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.junit.After;
@@ -84,8 +85,8 @@ public class FabricDosgiCamelTest extends FabricTestSupport {
             c.setProfiles(new Profile[]{p});
         }
 
-        Provision.assertSuccess(dosgiProviderContainers, PROVISION_TIMEOUT);
-        Provision.assertSuccess(dosgiCamelContainers, PROVISION_TIMEOUT);
+        Provision.provisioningSuccess(dosgiProviderContainers, PROVISION_TIMEOUT);
+        Provision.provisioningSuccess(dosgiCamelContainers, PROVISION_TIMEOUT);
 
         Thread.sleep(10000L);
         for (Container c : dosgiCamelContainers) {
