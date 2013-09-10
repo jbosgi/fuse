@@ -261,4 +261,9 @@ public class CreateContainerBasicOptions<T extends CreateContainerBasicOptions> 
     public Map<String, CreateContainerMetadata<T>> getMetadataMap() {
         return metadataMap;
     }
+
+    @Override
+    public CreateContainerOptions updateCredentials(String user, String credential) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -60,6 +60,11 @@ public class CreateContainerBasicMetadata<O extends CreateContainerOptions> impl
         return createOptions;
     }
 
+    @Override
+    public void updateCredentials(String user, String credential) {
+        this.createOptions = (O) createOptions.updateCredentials(user, credential);
+    }
+
     public void setCreateOptions(O createOptions) {
         this.createOptions = createOptions;
     }

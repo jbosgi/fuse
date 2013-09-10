@@ -381,4 +381,11 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
 	public CreateJCloudsContainerOptions clone() throws CloneNotSupportedException {
 		return (CreateJCloudsContainerOptions) super.clone();
 	}
+
+    @Override
+    public CreateContainerOptions updateCredentials(String user, String credential) {
+        setUser(user);
+        setPassword(credential);
+        return this;
+    }
 }

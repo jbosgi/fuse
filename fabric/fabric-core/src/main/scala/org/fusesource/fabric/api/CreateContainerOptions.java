@@ -75,4 +75,13 @@ public interface CreateContainerOptions extends Serializable, Cloneable {
 
     Map<String, ? extends CreateContainerMetadata> getMetadataMap();
 
+    /**
+     * Creates a new instance of {@link CreateContainerOptions} with updated credentials.
+     *
+     * @param user
+     * @param credential
+     * @return
+     */
+    CreateContainerOptions updateCredentials(String user, String credential);
+
 }

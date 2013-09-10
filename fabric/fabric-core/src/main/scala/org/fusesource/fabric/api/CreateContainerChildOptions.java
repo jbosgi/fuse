@@ -51,4 +51,11 @@ public class CreateContainerChildOptions extends CreateContainerBasicOptions<Cre
     public void setJmxPassword(String jmxPassword) {
         this.jmxPassword = jmxPassword;
     }
+
+    @Override
+    public CreateContainerOptions updateCredentials(String user, String credential) {
+        setJmxUser(user);
+        setJmxPassword(credential);
+        return this;
+    }
 }

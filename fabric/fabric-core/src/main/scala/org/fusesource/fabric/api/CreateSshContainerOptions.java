@@ -185,4 +185,11 @@ public class CreateSshContainerOptions extends CreateContainerBasicOptions<Creat
 	public CreateSshContainerOptions clone() throws CloneNotSupportedException {
 		return (CreateSshContainerOptions) super.clone();
 	}
+
+    @Override
+    public CreateContainerOptions updateCredentials(String user, String credential) {
+        setUsername(user);
+        setPassword(credential);
+        return this;
+    }
 }

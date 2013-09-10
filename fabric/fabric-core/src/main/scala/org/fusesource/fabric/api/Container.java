@@ -125,6 +125,7 @@ public interface Container extends HasId {
     
     String getProvisionStatus();
 
+    void setMetadata(CreateContainerMetadata<?> metadata);
     CreateContainerMetadata<?> getMetadata();
 
 
