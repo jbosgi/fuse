@@ -22,6 +22,8 @@ import java.util.Map;
 
 public class CreateContainerBasicMetadata<O extends CreateContainerOptions> implements CreateContainerMetadata<O> {
 
+    static final long serialVersionUID = 5589666399090415870L;
+    
     private String containerName;
     private O createOptions;
     private transient Throwable failure;

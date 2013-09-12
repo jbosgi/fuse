@@ -26,6 +26,8 @@ import org.fusesource.fabric.utils.Ports;
 
 public class CreateContainerBasicOptions<T extends CreateContainerBasicOptions> implements CreateContainerOptions{
 
+    static final long serialVersionUID = 7128607181089590902L; 
+
     protected String name;
     protected String parent;
     protected String providerType;
