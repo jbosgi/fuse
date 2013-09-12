@@ -21,7 +21,9 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.fusesource.fabric.api.CreateContainerBasicOptions;
 import org.fusesource.fabric.api.CreateContainerOptions;
 import org.fusesource.fabric.api.CreateRemoteContainerOptions;
+import org.fusesource.fabric.api.CreationStateListener;
 import org.fusesource.fabric.api.JCloudsInstanceType;
+import org.jclouds.compute.ComputeService;
 
 import java.net.URI;
 import java.util.*;
@@ -74,7 +76,7 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
         private int servicePort = 0;
         @JsonProperty
         private String publicKeyFile;
-        private transient Object computeService;
+        private transient ComputeService computeService;
         @JsonProperty
         private String path = "~/containers/";
         @JsonProperty
@@ -122,7 +124,7 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
             return this;
         }
 
-        public Builder computeService(final Object computeService) {
+        public Builder computeService(final ComputeService computeService) {
             this.computeService = computeService;
             return this;
         }
@@ -244,7 +246,7 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
             return this;
         }
 
-        public void setComputeService(Object computeService) {
+        public void setComputeService(ComputeService computeService) {
             this.computeService = computeService;
         }
 
@@ -344,7 +346,8 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
             return new CreateJCloudsContainerOptions(getBindAddress(), getResolver(), getGlobalResolver(), getManualIp(), getMinimumPort(),
                     getMaximumPort(), getProfiles(), getVersion(), getDataStoreProperties(), getZooKeeperServerPort(), getZooKeeperServerConnectionPort(), getZookeeperPassword(), isAgentEnabled(), isAutoImportEnabled(),
                     getImportPath(), getUsers(), getName(), getParent(), "jclouds", isEnsembleServer(), getPreferredAddress(), getSystemProperties(),
-                    getNumber(), getProxyUri(), getZookeeperUrl(), getJvmOpts(), isAdminAccess(), osFamily, osVersion, imageId, hardwareId, locationId,
+                    getNumber(), getProxyUri(), getZookeeperUrl(), getJvmOpts(), isAdminAccess(), getCreationStateListener(),
+                    osFamily, osVersion, imageId, hardwareId, locationId,
                     group, user, password, contextName, providerName, apiName, endpoint, instanceType, identity, credential,
                     owner, serviceOptions, nodeOptions, servicePort, publicKeyFile, computeService, path, environmentalVariables);
         }
@@ -392,7 +395,7 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
     @JsonProperty
     private final String publicKeyFile;
     @JsonIgnore
-    private final transient Object computeService;
+    private final transient ComputeService computeService;
     @JsonProperty
     private final String path;
     @JsonProperty
@@ -404,15 +407,16 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
                                          String importPath, Map<String, String> users, String name, String parent,
                                          String providerType, boolean ensembleServer, String preferredAddress,
                                          Map<String, Properties> systemProperties, int number, URI proxyUri, String zookeeperUrl,
-                                         String jvmOpts, boolean adminAccess, String osFamily, String osVersion, String imageId,
+                                         String jvmOpts, boolean adminAccess, CreationStateListener creationStateListener,
+                                         String osFamily, String osVersion, String imageId,
                                          String hardwareId, String locationId, String group, String user, String password,
                                          String contextName, String providerName, String apiName, String endpoint,
                                          JCloudsInstanceType instanceType, String identity, String credential, String owner, Map<String, String> serviceOptions, Map<String, String> nodeOptions, int servicePort, String publicKeyFile,
-                                         Object computeService, String path, Map<String, String> environmentalVariables) {
+                                         ComputeService computeService, String path, Map<String, String> environmentalVariables) {
 
         super(bindAddress, resolver, globalResolver, manualIp, minimumPort, maximumPort, profiles, version, dataStoreProperties, getZooKeeperServerPort, zooKeeperServerConnectionPort,
                 zookeeperPassword, agentEnabled, autoImportEnabled, importPath, users, name, parent, providerType,
-                ensembleServer, preferredAddress, systemProperties, number, proxyUri, zookeeperUrl, jvmOpts, adminAccess);
+                ensembleServer, preferredAddress, systemProperties, number, proxyUri, zookeeperUrl, jvmOpts, adminAccess, creationStateListener);
 
         this.osFamily = osFamily;
         this.osVersion = osVersion;
@@ -444,9 +448,20 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
         return new CreateJCloudsContainerOptions(getBindAddress(), getResolver(), getGlobalResolver(), getManualIp(), getMinimumPort(),
                 getMaximumPort(), getProfiles(), getVersion(), getDataStoreProperties(), getZooKeeperServerPort(), getZooKeeperServerConnectionPort(), getZookeeperPassword(), isAgentEnabled(), isAutoImportEnabled(),
                 getImportPath(), getUsers(), getName(), getParent(), "jclouds", isEnsembleServer(), getPreferredAddress(), getSystemProperties(),
-                getNumber(), getProxyUri(), getZookeeperUrl(), getJvmOpts(), isAdminAccess(), osFamily, osVersion, imageId, hardwareId, locationId,
+                getNumber(), getProxyUri(), getZookeeperUrl(), getJvmOpts(), isAdminAccess(), getCreationStateListener(),
+                osFamily, osVersion, imageId, hardwareId, locationId,
                 group, newUser != null ? newUser : user, newPassword != null ? newPassword : password,
                 contextName, providerName, apiName, endpoint, instanceType, identity, credential,
+                owner, serviceOptions, nodeOptions, servicePort, publicKeyFile, computeService, path, environmentalVariables);
+    }
+
+    public CreateJCloudsContainerOptions updateComputeService(ComputeService computeService) {
+        return new CreateJCloudsContainerOptions(getBindAddress(), getResolver(), getGlobalResolver(), getManualIp(), getMinimumPort(),
+                getMaximumPort(), getProfiles(), getVersion(), getDataStoreProperties(), getZooKeeperServerPort(), getZooKeeperServerConnectionPort(), getZookeeperPassword(), isAgentEnabled(), isAutoImportEnabled(),
+                getImportPath(), getUsers(), getName(), getParent(), "jclouds", isEnsembleServer(), getPreferredAddress(), getSystemProperties(),
+                getNumber(), getProxyUri(), getZookeeperUrl(), getJvmOpts(), isAdminAccess(), getCreationStateListener(),
+                osFamily, osVersion, imageId, hardwareId, locationId,
+                group, user, password, contextName, providerName, apiName, endpoint, instanceType, identity, credential,
                 owner, serviceOptions, nodeOptions, servicePort, publicKeyFile, computeService, path, environmentalVariables);
     }
 
@@ -457,7 +472,7 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
 
     @Override
     public String getHostNameContext() {
-        return providerName;
+        return getProviderName();
     }
 
     public String getPath() {
@@ -497,11 +512,11 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
     }
 
     public String getProviderName() {
-        return providerName;
+        return computeService != null ? computeService.getContext().unwrap().getProviderMetadata().getId() : providerName;
     }
 
     public String getApiName() {
-        return apiName;
+        return computeService != null ? computeService.getContext().unwrap().getProviderMetadata().getApiMetadata().getId() : apiName;
     }
 
     public String getEndpoint() {
@@ -548,7 +563,7 @@ public class CreateJCloudsContainerOptions extends CreateContainerBasicOptions<C
         return nodeOptions;
     }
 
-    public Object getComputeService() {
+    public ComputeService getComputeService() {
         return computeService;
     }
 

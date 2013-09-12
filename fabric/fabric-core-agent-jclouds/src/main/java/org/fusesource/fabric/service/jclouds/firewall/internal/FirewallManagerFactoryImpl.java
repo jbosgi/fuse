@@ -17,57 +17,40 @@
 
 package org.fusesource.fabric.service.jclouds.firewall.internal;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferencePolicy;
+import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.service.jclouds.firewall.ApiFirewallSupport;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallManager;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallManagerFactory;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallNotSupportedOnProviderException;
-import org.fusesource.fabric.service.jclouds.firewall.ProviderFirewallSupport;
 import org.jclouds.compute.ComputeService;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
-import org.osgi.util.tracker.ServiceTracker;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.apache.felix.scr.annotations.ReferenceCardinality.OPTIONAL_MULTIPLE;
+
+@Component(name = "org.fusesource.fabric.jclouds.firewall.manager.factory",
+        description = "Fabric Firewall Manager",
+        immediate = true)
+@Service(FirewallManagerFactory.class)
 public class FirewallManagerFactoryImpl implements FirewallManagerFactory {
 
-    private final Map<String, ProviderFirewallSupport> support = new HashMap<String, ProviderFirewallSupport>();
-    private final Map<String, FirewallManager> managers = new HashMap<String, FirewallManager>();
+    @Reference(cardinality = OPTIONAL_MULTIPLE, bind = "bindApiFirewallSupport", unbind = "unbindApiFirewallSupport", referenceInterface = ApiFirewallSupport.class, policy = ReferencePolicy.DYNAMIC)
+    private final Set<ApiFirewallSupport> firewallSupportModules = new HashSet<ApiFirewallSupport>();
 
-    private BundleContext bundleContext;
-    private ServiceTracker firewallSupportModuleTracker;
-
+    @Activate
     public void init() {
-        firewallSupportModuleTracker = new ServiceTracker(bundleContext,ProviderFirewallSupport.class.getName(), null) {
 
-            @Override
-            public Object addingService(ServiceReference reference) {
-                ProviderFirewallSupport support = (ProviderFirewallSupport) bundleContext.getService(reference);
-                bind(support);
-                return support;
-            }
-
-
-            @Override
-            public void removedService(ServiceReference reference, Object service) {
-                ProviderFirewallSupport support = (ProviderFirewallSupport) service;
-                unbind(support);
-                super.removedService(reference, service);
-            }
-
-            @Override
-            public void modifiedService(ServiceReference reference, Object service) {
-                ProviderFirewallSupport support = (ProviderFirewallSupport) service;
-                bind(support);
-                super.modifiedService(reference, service);
-            }
-        };
-        firewallSupportModuleTracker.open();
     }
 
+    @Deactivate
     public void destroy() {
-        if (firewallSupportModuleTracker != null) {
-            firewallSupportModuleTracker.close();
-        }
+
     }
 
     /**
@@ -78,43 +61,28 @@ public class FirewallManagerFactoryImpl implements FirewallManagerFactory {
      */
     @Override
     public synchronized FirewallManager getFirewallManager(ComputeService computeService) throws FirewallNotSupportedOnProviderException {
-        FirewallManager firewallManager = null;
-        String provider = computeService.getContext().unwrap().getId();
-
-        firewallManager = managers.get(provider);
-
-        if (firewallManager == null) {
-            ProviderFirewallSupport firewallSupport = support.get(provider);
+            ApiFirewallSupport firewallSupport = findApiFirewallSupport(computeService);
             if (firewallSupport == null) {
-                throw new FirewallNotSupportedOnProviderException("Provider "+ provider+ " is currently not supported for firewall operations");
+                throw new FirewallNotSupportedOnProviderException("Service is currently not supported for firewall operations");
             }
-            firewallManager = new FirewallManager(computeService, firewallSupport);
-            managers.put(provider, firewallManager);
+            FirewallManager firewallManager = new FirewallManager(computeService, firewallSupport);
+            return firewallManager;
+    }
+
+    private ApiFirewallSupport findApiFirewallSupport(ComputeService computeService) {
+        for (ApiFirewallSupport s : firewallSupportModules) {
+           if (s.supports(computeService)) {
+               return s;
+           }
         }
-        return firewallManager;
+        return null;
     }
 
-    public void bind(ProviderFirewallSupport providerSupport) {
-        if (providerSupport != null && providerSupport.getProviders() != null) {
-            for (String provider : providerSupport.getProviders()) {
-                support.put(provider, providerSupport);
-            }
-        }
+    public void bindApiFirewallSupport(ApiFirewallSupport providerSupport) {
+        firewallSupportModules.add(providerSupport);
     }
 
-    public void unbind(ProviderFirewallSupport providerSupport) {
-        if (providerSupport != null && providerSupport.getProviders() != null) {
-            for (String provider : providerSupport.getProviders()) {
-                support.remove(provider);
-            }
-        }
-    }
-
-    public BundleContext getBundleContext() {
-        return bundleContext;
-    }
-
-    public void setBundleContext(BundleContext bundleContext) {
-        this.bundleContext = bundleContext;
+    public void unbindApiFirewallSupport(ApiFirewallSupport providerSupport) {
+        firewallSupportModules.remove(providerSupport);
     }
 }
