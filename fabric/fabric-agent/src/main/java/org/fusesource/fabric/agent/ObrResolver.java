@@ -170,8 +170,13 @@ public class ObrResolver {
                     Version v2 = new Version(v1.getMajor(), v1.getMinor() + 1, 0);
                     if (compareFuseVersions(v1, over.getVersion()) < 0 && compareFuseVersions(over.getVersion(), v2) < 0) {
                         ress.remove(res);
-                        dependency &= infos.remove(res).isDependency();
                         add = true;
+
+                        // if the BundleInfo object has not been previously removed from the map, do that now
+                        BundleInfo removed = infos.remove(res);
+                        if (removed != null) {
+                            dependency &= removed.isDependency();
+                        }
                     }
                 }
             }
