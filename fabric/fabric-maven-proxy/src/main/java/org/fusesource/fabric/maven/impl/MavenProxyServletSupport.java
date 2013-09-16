@@ -44,7 +44,6 @@ import org.sonatype.aether.connector.wagon.WagonRepositoryConnectorFactory;
 import org.sonatype.aether.installation.InstallRequest;
 import org.sonatype.aether.metadata.Metadata;
 import org.sonatype.aether.repository.LocalRepository;
-import org.sonatype.aether.repository.Proxy;
 import org.sonatype.aether.repository.RemoteRepository;
 import org.sonatype.aether.repository.RepositoryPolicy;
 import org.sonatype.aether.resolution.ArtifactRequest;
@@ -60,6 +59,9 @@ import org.sonatype.aether.util.metadata.DefaultMetadata;
 public class MavenProxyServletSupport extends HttpServlet implements MavenProxy {
 
     protected static final Logger LOGGER = Logger.getLogger(MavenProxyServletSupport.class.getName());
+
+    private static final String SNAPSHOT_TIMESTAMP_REGEX = "^([0-9]{8}.[0-9]{6}-[0-9]+).*";
+    private static final Pattern SNAPSHOT_TIMESTAMP_PATTENR = Pattern.compile(SNAPSHOT_TIMESTAMP_REGEX);
 
     //The pattern below matches a path to the following:
     //1: groupId
@@ -124,6 +126,7 @@ public class MavenProxyServletSupport extends HttpServlet implements MavenProxy 
         if (session == null) {
             session = newSession(system, localRepository);
         }
+
         repositories = new HashMap<String, RemoteRepository>();
 
         for (String rep : remoteRepositories.split(",")) {
@@ -144,10 +147,18 @@ public class MavenProxyServletSupport extends HttpServlet implements MavenProxy 
             remoteRepository.setProxy(session.getProxySelector().getProxy(remoteRepository));
             repositories.put(id, remoteRepository);
         }
+        RemoteRepository local = new RemoteRepository("local", DEFAULT_REPO_ID, "file://" + localRepository);
+        local.setPolicy(true, new RepositoryPolicy(true, updatePolicy, checksumPolicy));
+        repositories.put("local", local);
 
-        repositories.put("local", new RemoteRepository("local", DEFAULT_REPO_ID, "file://" + localRepository));
-        repositories.put("karaf", new RemoteRepository("karaf", DEFAULT_REPO_ID, "file://" + System.getProperty("karaf.home") + File.separator + System.getProperty("karaf.default.repository")));
-        repositories.put("user", new RemoteRepository("user", DEFAULT_REPO_ID, "file://" + System.getProperty("user.home") + File.separator + ".m2" + File.separator + "repository"));
+        RemoteRepository karaf = new RemoteRepository("karaf", DEFAULT_REPO_ID, "file://" + System.getProperty("karaf.home") + File.separator + System.getProperty("karaf.default.repository"));
+        karaf.setPolicy(true, new RepositoryPolicy(true, updatePolicy, checksumPolicy));
+        repositories.put("karaf", karaf);
+
+        RemoteRepository user = new RemoteRepository("user", DEFAULT_REPO_ID, "file://" + System.getProperty("user.home") + File.separator + ".m2" + File.separator + "repository");
+        user.setPolicy(true, new RepositoryPolicy(true, updatePolicy, checksumPolicy));
+
+        repositories.put("user", user);
         if (appendSystemRepos) {
             for (RemoteRepository sysRepo : MavenUtils.getRemoteRepositories()) {
                 sysRepo.setProxy(session.getProxySelector().getProxy(sysRepo));
@@ -263,6 +274,8 @@ public class MavenProxyServletSupport extends HttpServlet implements MavenProxy 
         session.setMirrorSelector(MavenUtils.getMirrorSelector());
         session.setAuthenticationSelector(MavenUtils.getAuthSelector());
         session.setCache(new DefaultRepositoryCache());
+        session.setUpdatePolicy(updatePolicy);
+        session.setChecksumPolicy(checksumPolicy);
         LocalRepository localRepo = new LocalRepository(localRepository);
         session.setLocalRepositoryManager(system.newLocalRepositoryManager(localRepo));
         return session;
@@ -304,7 +317,16 @@ public class MavenProxyServletSupport extends HttpServlet implements MavenProxy 
             String stripedFileName = null;
 
             if (version.endsWith("SNAPSHOT")) {
-                stripedFileName = filename.replaceAll("\\d{8}.\\d+-\\d+", "SNAPSHOT");
+                String baseVersion = version.replaceAll("-SNAPSHOT", "");
+                String timestampedFileName = filename.substring(artifactId.length() + baseVersion.length() + 2);
+                //Check if snapshot is timestamped and override the version. @{link Artifact} will still treat it as a SNAPSHOT.
+                //and also in case of artifact installation the proper filename will be used.
+                Matcher ts = SNAPSHOT_TIMESTAMP_PATTENR.matcher(timestampedFileName);
+                if (ts.matches()) {
+                    version = baseVersion + "-" + ts.group(1);
+                    filePerfix = artifactId + "-" + version;
+                }
+                stripedFileName = filename.replaceAll(SNAPSHOT_TIMESTAMP_REGEX, "SNAPSHOT");
                 stripedFileName = stripedFileName.substring(filePerfix.length());
             } else {
                 stripedFileName = filename.substring(filePerfix.length());
