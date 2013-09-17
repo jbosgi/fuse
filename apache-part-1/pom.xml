@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (C) FuseSource, Inc.
+  http://fusesource.com
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+    limitations under the License.
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>org.fusesource</groupId>
+        <artifactId>fuse-project</artifactId>
+        <version>8.0.0-SNAPSHOT</version>
+        <relativePath>../parent</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.fusesource.fabric</groupId>
+    <artifactId>fabric-project</artifactId>
+    <packaging>pom</packaging>
+    <name>Fuse Fabric :: Project</name>
+
+    <licenses>
+      <license>
+        <name>FuseSource Fabric License</name>
+        <url>fabric_license.txt</url>
+        <distribution>repo</distribution>
+        <comments>Fabric license is based on ASL 2.0</comments>
+      </license>
+    </licenses>
+
+    <modules>
+        <module>common-util</module>
+        <module>fab-core</module>
+        <module>fab-osgi</module>
+        <module>fabric-agent</module>
+        <module>fabric-api</module>
+        <module>fabric-boot-commands</module>
+        <module>fabric-commands</module>
+        <module>fabric-configadmin</module>
+        <module>fabric-core</module>
+        <module>fabric-git</module>
+        <module>fabric-git-server</module>
+        <module>fabric-groups</module>
+        <module>fabric-jaas</module>
+        <module>fabric-jolokia</module>
+        <module>fabric-maven-proxy</module>
+        <module>fabric-utils</module>
+        <module>fabric-zookeeper</module>
+        <module>fabric-zookeeper-commands</module>
+        <module>fabric-zookeeper-spring</module>
+        <module>insight-log-core</module>
+        <module>insight-log</module>
+    </modules>
+
+</project>
