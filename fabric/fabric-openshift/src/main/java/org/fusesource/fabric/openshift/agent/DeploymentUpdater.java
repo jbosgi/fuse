@@ -2,17 +2,20 @@ package org.fusesource.fabric.openshift.agent;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.karaf.features.BundleInfo;
 import org.apache.karaf.features.Feature;
 import org.apache.karaf.features.Repository;
 import org.eclipse.jgit.api.Git;
@@ -21,6 +24,7 @@ import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.RefSpec;
 import org.fusesource.common.util.Strings;
 import org.fusesource.fabric.agent.download.DownloadManager;
+import org.fusesource.fabric.agent.mvn.Parser;
 import org.fusesource.fabric.agent.utils.AgentUtils;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.Profile;
@@ -29,19 +33,39 @@ import org.fusesource.fabric.utils.Files;
 import org.fusesource.fabric.utils.features.FeatureUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
-public class DeploymentTask {
-    private static final transient Logger LOG = LoggerFactory.getLogger(DeploymentTask.class);
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.xpath.XPathExpressionException;
+
+import static org.fusesource.fabric.utils.PatchUtils.extractUrl;
+
+/**
+ * Updates the deployment in a Fabric managed OpenShift cartridge
+ * by either copying new deployment artifacts into directories in git directly or
+ * by updating the pom.xml in the maven build of the cartridges git repository to
+ * download the required deployment artifacts as part of the build (based on the flag
+ * {@link #isCopyFilesIntoGit()}.
+ *
+ * For some common containers like Tomcat we also auto-detect special files like {@link #OPENSHIFT_CONFIG_CATALINA_PROPERTIES}
+ * so that we can enable the use of a shared folder for deploying jars on a shared classpath across deployment units.
+ *
+ * This allows, for example, shared features to be used across deployment units; such as, say, Apache Camel jars to be installed
+ * and shared across all web applications in the container.
+ */
+public class DeploymentUpdater {
+    private static final transient Logger LOG = LoggerFactory.getLogger(DeploymentUpdater.class);
     public static final String OPENSHIFT_CONFIG_CATALINA_PROPERTIES = ".openshift/config/catalina.properties";
 
     private final DownloadManager downloadManager;
     private final Container container;
     private final String webAppDir;
     private final String deployDir;
+    private boolean copyFilesIntoGit = false;
 
-
-    public DeploymentTask(DownloadManager downloadManager, Container container, String webAppDir,
-                          String deployDir) {
+    public DeploymentUpdater(DownloadManager downloadManager, Container container, String webAppDir,
+                             String deployDir) {
         this.downloadManager = downloadManager;
         this.container = container;
         this.webAppDir = webAppDir;
@@ -54,13 +78,34 @@ public class DeploymentTask {
         Profile profile = container.getOverlayProfile();
         bundles.addAll(profile.getBundles());
         addFeatures(features, profile);
-/*
-        Profile[] profiles = container.getProfiles();
-        for (Profile profile : profiles) {
-            bundles.addAll(profile.getBundles());
-            addFeatures(features, profile);
+
+        if (copyFilesIntoGit) {
+            copyDeploymentsIntoGit(git, baseDir, bundles, features);
+        } else {
+            addDeploymentsIntoPom(git, baseDir, bundles, features);
         }
-*/
+
+        // now lets do a commit
+        String message = "updating deployment";
+        git.commit().setMessage(message).call();
+
+        enableDeployDirectory(git, baseDir);
+
+        String branch = GitHelpers.currentBranch(git);
+        LOG.info("Pushing deployment changes to branch " + branch
+                + " credentials " + credentials + " for container " + container.getId());
+        try {
+            git.push().setCredentialsProvider(credentials).setRefSpecs(new RefSpec(branch)).setProgressMonitor(new LoggingProgressMonitor(LOG)).call();
+            LOG.info("Pushed deployment changes to branch " + branch + " for container " + container.getId());
+        } catch (GitAPIException e) {
+            LOG.error("Failed to push deployment changes to branch " + branch + " for container " + container.getId() + ". Reason: " + e, e);
+        }
+    }
+
+    /**
+     * Lets download all the deployments and copy them into the {@link #webAppDir} or {@link #deployDir} in git
+     */
+    protected void copyDeploymentsIntoGit(Git git, File baseDir, Set<String> bundles, Set<Feature> features) throws Exception {
         List<String> webAppFilesToDelete = filesToDelete(baseDir, webAppDir);
         List<String> deployDirFilesToDelete = filesToDelete(baseDir, deployDir);
 
@@ -97,23 +142,39 @@ public class DeploymentTask {
             deleteFiles(git, baseDir, webAppDir, webAppFilesToDelete);
             deleteFiles(git, baseDir, deployDir, deployDirFilesToDelete);
         }
-        
-        // now lets do a commit
-        String message = "updating deployment";
-        git.commit().setMessage(message).call();
+    }
 
-        enableDeployDirectory(git, baseDir);
 
-        String branch = GitHelpers.currentBranch(git);
-        LOG.info("Pushing deployment changes to branch " + branch
-                + " credentials " + credentials + " for container " + container.getId());
-        try {
-            git.push().setCredentialsProvider(credentials).setRefSpecs(new RefSpec(branch)).call();
-            LOG.info("Pushed deployment changes to branch " + branch + " for container " + container.getId());
-        } catch (GitAPIException e) {
-            LOG.error("Failed to push deployment changes to branch " + branch + " for container " + container.getId() + ". Reason: " + e, e);
+    /**
+     * Copy the various deployments into the pom.xml so that after the push, OpenShift will
+     * run the build and download the deployments into the {@link #webAppDir} or {@link #deployDir}
+     */
+    protected void addDeploymentsIntoPom(Git git, File baseDir, Set<String> bundles, Set<Feature> features) throws SAXException, ParserConfigurationException, XPathExpressionException, IOException, TransformerException {
+        Set<String> locations = new HashSet<String>();
+        for (Feature feature : features) {
+            for (BundleInfo bundle : feature.getBundles()) {
+                locations.add(bundle.getLocation());
+            }
+        }
+        for (String bundle : bundles) {
+            locations.add(bundle);
+        }
+        List<Parser> artifacts = new ArrayList<Parser>();
+        for (String location : locations) {
+            try {
+                Parser parser = new Parser(location);
+                artifacts.add(parser);
+
+            } catch (MalformedURLException e) {
+                LOG.error("Failed to parse bundle URL: " + location + ". " + e, e);
+            }
+        }
+        if (artifacts.size() > 0) {
+            OpenShiftPomDeployer pomDeployer = new OpenShiftPomDeployer(git, baseDir, deployDir, webAppDir);
+            pomDeployer.update(artifacts);
         }
     }
+
 
     /**
      * Checks things like Tomcat to see if the deployDir needs to be added to the shared class loader
@@ -225,5 +286,13 @@ public class DeploymentTask {
 
     public String getDeployDir() {
         return deployDir;
+    }
+
+    public boolean isCopyFilesIntoGit() {
+        return copyFilesIntoGit;
+    }
+
+    public void setCopyFilesIntoGit(boolean copyFilesIntoGit) {
+        this.copyFilesIntoGit = copyFilesIntoGit;
     }
 }
