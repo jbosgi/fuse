@@ -17,11 +17,13 @@
 package org.fusesource.fabric.openshift.agent;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.fusesource.common.util.DomHelper;
 import org.fusesource.common.util.Objects;
 import org.fusesource.common.util.Strings;
 import org.fusesource.common.util.XPathBuilder;
 import org.fusesource.common.util.XPathFacade;
+import org.fusesource.fabric.agent.mvn.MavenRepositoryURL;
 import org.fusesource.fabric.agent.mvn.Parser;
 import org.fusesource.fabric.agent.utils.XmlUtils;
 import org.fusesource.fabric.utils.Files;
@@ -63,7 +65,7 @@ public class OpenShiftPomDeployer {
         this.webAppDir = webAppDir;
     }
 
-    public void update(List<Parser> artifacts) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException, TransformerException {
+    public void update(List<Parser> artifacts, List<MavenRepositoryURL> repos) throws IOException, SAXException, ParserConfigurationException, XPathExpressionException, TransformerException, GitAPIException {
         File pom = new File(baseDir, "pom.xml");
         Files.assertFileExists(pom);
 
@@ -73,25 +75,19 @@ public class OpenShiftPomDeployer {
         Element project = doc.getDocumentElement();
         Objects.notNull(doc, "project element");
 
+        Element dependencies = getOrCreateChild(project, "dependencies", 1, true);
+        Element repositories = getOrCreateChild(project, "repositories", 1, true);
+
         Element openshiftPlugins = getOrCreateOpenShiftProfilePlugins(project);
+
 
         updateWarPlugin(openshiftPlugins);
         updateCleanPlugin(openshiftPlugins);
-        updateDependencyPlugin(openshiftPlugins, artifacts);
+        updateDependencyPlugin(openshiftPlugins, dependencies, artifacts);
+        updateRepositories(repositories, repos);
 
         DomHelper.save(doc, pom);
-    }
-
-    protected Element getOrCreateOpenShiftProfilePlugins(Element project) throws XPathExpressionException {
-        Element profile = xpath("profiles/profile[id = 'openshift']").element(project);
-        if (profile == null) {
-            Element profiles = getOrCreateChild(project, "profiles", 1, true);
-            profile = createAndAppendChild(profiles, "profile", 2);
-            createAndAppendChild(profile, "id", 3, "openshift");
-        }
-        Element build = getOrCreateChild(profile, "build", 3);
-        Element plugins = getOrCreateChild(build, "plugins", 4);
-        return plugins;
+        git.add().addFilepattern("pom.xml").call();
     }
 
     /**
@@ -149,7 +145,7 @@ public class OpenShiftPomDeployer {
      * Lets add/update the maven dependency plugin configuration to copy deployments
      * to the deployDir or the webAppDir
      */
-    protected void updateDependencyPlugin(Element plugins, List<Parser> artifacts) throws XPathExpressionException {
+    protected void updateDependencyPlugin(Element plugins, Element dependencies, List<Parser> artifacts) throws XPathExpressionException {
         Element plugin = getOrCreatePlugin(plugins, "maven-dependency-plugin", "2.8");
         Element executions = getOrCreateChild(plugin, "executions", 6);
 
@@ -165,14 +161,53 @@ public class OpenShiftPomDeployer {
             }
         }
         if (Strings.isNotBlank(webAppDir) && !warArtifacts.isEmpty()) {
-            recreateDependencyExecution(executions, "fuse-fabric-deploy-webapps", webAppDir, warArtifacts, true);
+            recreateDependencyExecution(executions, dependencies, "fuse-fabric-deploy-webapps", webAppDir, warArtifacts, true);
         }
         if (Strings.isNotBlank(deployDir) && !jarArtifacts.isEmpty()) {
-            recreateDependencyExecution(executions, "fuse-fabric-deploy-shared", deployDir, jarArtifacts, false);
+            recreateDependencyExecution(executions, dependencies, "fuse-fabric-deploy-shared", deployDir, jarArtifacts, false);
         }
     }
 
-    protected Element recreateDependencyExecution(Element executions, String executionId, String outputDir, List<Parser> list, boolean isWar) throws XPathExpressionException {
+
+    /**
+     * Ensure that the given maven repositories are added to the pom.xml
+     */
+    protected void updateRepositories(Element repositories, List<MavenRepositoryURL> repos) throws XPathExpressionException {
+        for (MavenRepositoryURL repo : repos) {
+            String url = repo.getURL().toString();
+            String id = repo.getId();
+            if (Strings.isNotBlank(url)) {
+                Element repository = recreateChild(repositories, "repository[url='" + url + "']", "repository", 2);
+                if (Strings.isNotBlank(id)) {
+                    createAndAppendChild(repository, "id", 3, id);
+                }
+                createAndAppendChild(repository, "url", 3, url);
+                addRepositoryFlag(repository, "releases", repo.isReleasesEnabled());
+                addRepositoryFlag(repository, "snapshots", repo.isSnapshotsEnabled());
+            }
+        }
+    }
+
+    protected void addRepositoryFlag(Element repository, String flagElementName, boolean flag) {
+        Element flagElement = createAndAppendChild(repository, flagElementName, 3);
+        createAndAppendChild(flagElement, "enabled", 4, flag ? "true" : "false");
+    }
+
+
+    protected Element getOrCreateOpenShiftProfilePlugins(Element project) throws XPathExpressionException {
+            Element profile = xpath("profiles/profile[id = 'openshift']").element(project);
+            if (profile == null) {
+                Element profiles = getOrCreateChild(project, "profiles", 1, true);
+                profile = createAndAppendChild(profiles, "profile", 2);
+                createAndAppendChild(profile, "id", 3, "openshift");
+            }
+            Element build = getOrCreateChild(profile, "build", 3);
+            Element plugins = getOrCreateChild(build, "plugins", 4);
+            return plugins;
+        }
+
+
+    protected Element recreateDependencyExecution(Element executions, Element dependencies, String executionId, String outputDir, List<Parser> list, boolean isWar) throws XPathExpressionException {
         // lets make sure the output dir is trimmed of "/"
         while (outputDir.startsWith("/")) {
             outputDir = outputDir.substring(1);
@@ -180,26 +215,18 @@ public class OpenShiftPomDeployer {
 
         Element execution = recreateChild(executions, "execution[id = '" + executionId + "']", "execution", 7);
         createAndAppendChild(execution, "id", 8, executionId);
-        createAndAppendChild(execution, "phase", 9, "copy");
-        Element goals = createAndAppendChild(execution, "goals", 9);
-        createAndAppendChild(goals, "goal", 10, "copy");
+        createAndAppendChild(execution, "phase", 8, "package");
+        Element goals = createAndAppendChild(execution, "goals", 8);
+        createAndAppendChild(goals, "goal", 9, "copy");
 
         Element configuration = createAndAppendChild(execution, "configuration", 9);
         Element artifactItems = createAndAppendChild(configuration, "artifactItems", 10);
         for (Parser parser : list) {
             Element artifactItem = createAndAppendChild(artifactItems, "artifactItem", 11);
-            String group = parser.getGroup();
-            int idx = group.indexOf(':');
-            if (idx > 0) {
-                group = group.substring(idx + 1);
-            }
-            createAndAppendChild(artifactItem, "groupId", 12, group);
-            createAndAppendChild(artifactItem, "artifactId", 12, parser.getArtifact());
-            createAndAppendChild(artifactItem, "version", 12, parser.getVersion());
-            String type = parser.getType();
-            if (type != null && !Objects.equal("jar", type)) {
-                createAndAppendChild(artifactItem, "type", 12, type);
-            }
+            addMavenCoordinates(artifactItem, parser, 12);
+
+            addOrUpdateDependency(dependencies, parser);
+
             createAndAppendChild(artifactItem, "overWrite", 12, "true");
             createAndAppendChild(artifactItem, "outputDirectory", 12, "${basedir}/" + outputDir);
 
@@ -212,6 +239,58 @@ public class OpenShiftPomDeployer {
         createAndAppendChild(configuration, "overWriteReleases", 10, "true");
         createAndAppendChild(configuration, "overWriteSnapshots", 10, "true");
         return configuration;
+    }
+
+    protected void addOrUpdateDependency(Element dependencies, Parser parser) throws XPathExpressionException {
+        String group = groupId(parser);
+        String artifact = parser.getArtifact();
+        String xpath = "dependency[groupId = '" + group + "' and artifactId = '" + artifact + "'";
+        String type = parser.getType();
+        if (Strings.isNotBlank(type) && !Objects.equal("jar", type)) {
+            xpath += " and type='" + type + "'";
+        }
+        String classifier = parser.getClassifier();
+        if (Strings.isNotBlank(classifier)) {
+            xpath += " and classifier='" + classifier + "'";
+        }
+        xpath += "]";
+        String scope = "provided";
+        Element dependency = xpath(xpath).element(dependencies);
+        if (dependency != null) {
+            // lets preserve the scope or not add it if there is no scope
+            // on the previously found dependency
+            scope = xpath("scope").elementTextContent(dependency);
+            detachElement(dependency);
+        }
+        dependency =  createAndAppendChild(dependencies, "dependency", 2);
+        addMavenCoordinates(dependency, parser, 3);
+        if (Strings.isNotBlank(scope)) {
+            createAndAppendChild(dependency, "scope", 3, scope);
+        }
+    }
+
+    protected void addMavenCoordinates(Element owner, Parser parser, int indent) {
+        String group = groupId(parser);
+        createAndAppendChild(owner, "groupId", indent, group);
+        createAndAppendChild(owner, "artifactId", indent, parser.getArtifact());
+        createAndAppendChild(owner, "version", indent, parser.getVersion());
+        String type = parser.getType();
+        if (type != null && !Objects.equal("jar", type)) {
+            createAndAppendChild(owner, "type", indent, type);
+        }
+        String classifier = parser.getClassifier();
+        if (Strings.isNotBlank(classifier)) {
+            createAndAppendChild(owner, "classifier", indent, classifier);
+        }
+    }
+
+    public static String groupId(Parser parser) {
+        String group = parser.getGroup();
+        int idx = group.indexOf(':');
+        if (idx > 0) {
+            group = group.substring(idx + 1);
+        }
+        return group;
     }
 
 
@@ -242,11 +321,15 @@ public class OpenShiftPomDeployer {
     private Element recreateChild(Element owner, String xpath, String elementName, int indent) throws XPathExpressionException {
         Element answer = xpath(xpath).element(owner);
         if (answer != null) {
-            DomHelper.removePreviousSiblingText(answer);
-            DomHelper.removeNextSiblingText(answer);
-            DomHelper.detach(answer);
+            detachElement(answer);
         }
         return createAndAppendChild(owner, elementName, indent);
+    }
+
+    protected void detachElement(Element answer) {
+        DomHelper.removePreviousSiblingText(answer);
+        DomHelper.removeNextSiblingText(answer);
+        DomHelper.detach(answer);
     }
 
     /**
