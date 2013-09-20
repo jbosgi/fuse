@@ -19,6 +19,8 @@ package org.fusesource.fabric.api;
 
 public class CreateContainerChildOptions extends CreateContainerBasicOptions<CreateContainerChildOptions> {
 
+    static final long serialVersionUID = 1148235037623812028L;
+
     private String jmxUser;
     private String jmxPassword;
 
