@@ -18,43 +18,65 @@ package org.fusesource.fabric.partition.internal;
 
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.partition.BalancingPolicy;
 import org.fusesource.fabric.partition.WorkerNode;
 import org.fusesource.fabric.zookeeper.ZkPath;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
-@Component(name = "org.fusesource.fabric.partition.balancing.even",
-        description = "Fabric Partition Even Balancing Policy",
-        immediate = true)
-@Service
-public class EvenBalancingPolicy implements BalancingPolicy {
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.partition.balancing.even", description = "Fabric Partition Even Balancing Policy", immediate = true) // Done
+@Service(BalancingPolicy.class)
+public final class EvenBalancingPolicy extends AbstractComponent implements BalancingPolicy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EvenBalancingPolicy.class);
     private static final String TYPE = "even";
+
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
+
     private final ObjectMapper mapper = new ObjectMapper();
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private CuratorFramework curator;
-
     public EvenBalancingPolicy() {
-        this.mapper.registerSubtypes(WorkerNode.class);
+        mapper.registerSubtypes(WorkerNode.class);
+    }
+
+    @Activate
+    void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
     }
 
     @Override
     public String getType() {
+        assertValid();
         return TYPE;
     }
 
+    /*
+     * Only allow one thread to balance at a time
+     */
     @Override
-    public void rebalance(String workId, String[] items, String[] members) {
+    public synchronized void rebalance(String workId, String[] items, String[] members) {
+        assertValid();
         Multimap<String, String> distribution = LinkedHashMultimap.create();
         //First pass - calculate the work distribution
         int index = 0;
@@ -66,7 +88,7 @@ public class EvenBalancingPolicy implements BalancingPolicy {
         //Second pass - assignment
         for (String member : members) {
             try {
-                WorkerNode node = mapper.readValue(curator.getData().forPath(member), WorkerNode.class);
+                WorkerNode node = mapper.readValue(curator.get().getData().forPath(member), WorkerNode.class);
                 Collection<String> assignedItems = distribution.get(member);
 
                 if (assignedItems != null) {
@@ -75,18 +97,18 @@ public class EvenBalancingPolicy implements BalancingPolicy {
                     node.setPartitions(new String[0]);
                 }
                 String targetPath = ZkPath.TASK_MEMBER_PARTITIONS.getPath(node.getContainer(), workId);
-                curator.setData().forPath(targetPath, mapper.writeValueAsBytes(node));
+                curator.get().setData().forPath(targetPath, mapper.writeValueAsBytes(node));
             } catch (Exception ex) {
                 LOGGER.error("Error while assigning work", ex);
             }
         }
     }
 
-    public CuratorFramework getCurator() {
-        return curator;
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
     }
 
-    public void setCurator(CuratorFramework curator) {
-        this.curator = curator;
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
     }
 }

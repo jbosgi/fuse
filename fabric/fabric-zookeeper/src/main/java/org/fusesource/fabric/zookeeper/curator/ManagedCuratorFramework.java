@@ -22,6 +22,7 @@ package org.fusesource.fabric.zookeeper.curator;
 
 import com.google.common.base.Strings;
 import com.google.common.io.Closeables;
+
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.ensemble.EnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
@@ -37,6 +38,10 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Modified;
 import org.apache.felix.scr.annotations.Reference;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
@@ -44,10 +49,8 @@ import org.osgi.service.cm.ManagedServiceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
@@ -71,48 +74,43 @@ import static org.fusesource.fabric.zookeeper.curator.Constants.SESSION_TIMEOUT;
 import static org.fusesource.fabric.zookeeper.curator.Constants.ZOOKEEPER_PASSWORD;
 import static org.fusesource.fabric.zookeeper.curator.Constants.ZOOKEEPER_URL;
 
-
-@Component(name = "org.fusesource.fabric.zookeeper",
-        description = "Fabric ZooKeeper Client Factory",
-        policy = OPTIONAL,
-        immediate = true)
-public class ManagedCuratorFramework implements Closeable {
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.zookeeper", description = "Fabric ZooKeeper Client Factory", policy = OPTIONAL, immediate = true) // Done
+public final class ManagedCuratorFramework extends AbstractComponent {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ManagedCuratorFramework.class);
 
-
-    private final Map<String, ACLProvider> aclProviders = new HashMap<String, ACLProvider>();
-    private final DynamicEnsembleProvider ensembleProvider = new DynamicEnsembleProvider();
-    private final ExecutorService executor = Executors.newFixedThreadPool(5);
-
-    @Reference(cardinality = OPTIONAL_MULTIPLE, policy = DYNAMIC, referenceInterface = ConnectionStateListener.class,
-            bind = "bindConnectionStateListener", unbind = "unbindConnectionStateListener")
+    @Reference(referenceInterface = ConnectionStateListener.class, bind = "bindConnectionStateListener", unbind = "unbindConnectionStateListener", cardinality = OPTIONAL_MULTIPLE, policy = DYNAMIC)
     private final Set<ConnectionStateListener> connectionStateListeners = new HashSet<ConnectionStateListener>();
+    @Reference(referenceInterface = ACLProvider.class)
+    private final ValidatingReference<ACLProvider> aclProvider = new ValidatingReference<ACLProvider>();
 
-    @Reference
-    private ACLProvider aclProvider;
-
-    //Just for ordering of shutdown.
+    /**
+     * This reference is only used to ensure that the CuratorFramework will stop before the ZooKeeper server.
+     */
     @Reference(referenceInterface = ManagedServiceFactory.class, target = "(service.pid=org.fusesource.fabric.zookeeper.server)")
-    private ManagedServiceFactory zooKeeperServiceFactory;
+    private ManagedServiceFactory managedServiceFactory;
 
-    private BundleContext bundleContext;
-    private CuratorFramework curatorFramework;
-    private ServiceRegistration registration;
-    private Map<String, ?> oldProperties;
+    @GuardedBy("this") private final DynamicEnsembleProvider ensembleProvider = new DynamicEnsembleProvider();
+    @GuardedBy("this") private final ExecutorService executor = Executors.newFixedThreadPool(5);
+    @GuardedBy("this") private BundleContext bundleContext;
+    @GuardedBy("this") private CuratorFramework curatorFramework;
+    @GuardedBy("this") private ServiceRegistration registration;
+    @GuardedBy("this") private Map<String, ?> oldProperties;
 
     @Activate
-    public void init(BundleContext bundleContext, Map<String, ?> properties) throws ConfigurationException {
+    synchronized void activate(BundleContext bundleContext, Map<String, ?> properties) throws ConfigurationException {
         this.bundleContext = bundleContext;
         if ((properties == null || !properties.containsKey(ZOOKEEPER_URL)) && Strings.isNullOrEmpty(System.getProperty(ZOOKEEPER_URL))) {
             return;
         }
         updateService(buildCuratorFramework(properties));
         this.oldProperties = properties;
+        activateComponent();
     }
 
     @Modified
-    public void updated(Map<String, ?> properties) throws ConfigurationException {
+    synchronized void updated(Map<String, ?> properties) throws ConfigurationException {
         if ((properties == null || !properties.containsKey(ZOOKEEPER_URL)) && Strings.isNullOrEmpty(System.getProperty(ZOOKEEPER_URL))) {
             return;
         } else if (isRestartRequired(oldProperties, properties)) {
@@ -131,19 +129,25 @@ public class ManagedCuratorFramework implements Closeable {
     }
 
     @Deactivate
-    public void destroy() {
-        Closeables.closeQuietly(this);
+    synchronized void deactivate() throws IOException {
+        deactivateComponent();
+        if (registration != null) {
+            try {
+                registration.unregister();
+            } catch (IllegalStateException e) {
+                // Ignore
+            }
+        }
+        Closeables.close(curatorFramework, true);
+        executor.shutdownNow();
     }
-
 
     /**
      * Updates the {@link org.osgi.framework.ServiceRegistration} with the new {@link org.apache.curator.framework.CuratorFramework}.
      * Un-registers previously registered services, closes previously created {@link org.apache.curator.framework.CuratorFramework} instances and
      * registers the new {@link org.apache.curator.framework.CuratorFramework}.
-     *
-     * @param framework
      */
-    void updateService(CuratorFramework framework) {
+    private void updateService(CuratorFramework framework) {
         if (registration != null) {
             registration.unregister();
             try {
@@ -173,11 +177,8 @@ public class ManagedCuratorFramework implements Closeable {
 
     /**
      * Builds a {@link org.apache.curator.framework.CuratorFramework} from the specified {@link java.util.Map<String, ?>}.
-     *
-     * @param properties
-     * @return
      */
-    synchronized CuratorFramework buildCuratorFramework(Map<String, ?> properties) {
+    private synchronized CuratorFramework buildCuratorFramework(Map<String, ?> properties) {
         String connectionString = readString(properties, ZOOKEEPER_URL, System.getProperty(ZOOKEEPER_URL, ""));
         ensembleProvider.update(connectionString);
         int sessionTimeoutMs = readInt(properties, SESSION_TIMEOUT, DEFAULT_SESSION_TIMEOUT_MS);
@@ -193,7 +194,7 @@ public class ManagedCuratorFramework implements Closeable {
             String scheme = "digest";
             String password = readString(properties, ZOOKEEPER_PASSWORD, System.getProperty(ZOOKEEPER_PASSWORD, ""));
             byte[] auth = ("fabric:" + password).getBytes();
-            builder = builder.authorization(scheme, auth).aclProvider(aclProvider);
+            builder = builder.authorization(scheme, auth).aclProvider(aclProvider.get());
         }
 
         CuratorFramework framework = builder.build();
@@ -208,8 +209,6 @@ public class ManagedCuratorFramework implements Closeable {
 
     /**
      * Updates the {@link EnsembleProvider} with the new connection string.
-     *
-     * @param properties
      */
     private void updateEnsemble(Map<String, ?> properties) {
         String connectionString = readString(properties, ZOOKEEPER_URL, "");
@@ -218,11 +217,8 @@ public class ManagedCuratorFramework implements Closeable {
 
     /**
      * Builds an {@link org.apache.curator.retry.ExponentialBackoffRetry} from the {@link java.util.Map<String, ?>}.
-     *
-     * @param properties
-     * @return
      */
-    RetryPolicy buildRetryPolicy(Map<String, ?> properties) {
+    private RetryPolicy buildRetryPolicy(Map<String, ?> properties) {
         int maxRetries = readInt(properties, RETRY_POLICY_MAX_RETRIES, MAX_RETRIES_LIMIT);
         int baseSleepTimeMS = readInt(properties, RETRY_POLICY_BASE_SLEEP_TIME_MS, DEFAULT_BASE_SLEEP_MS);
         int maxSleepTimeMS = readInt(properties, RETRY_POLICY_MAX_SLEEP_TIME_MS, DEFAULT_MAX_SLEEP_MS);
@@ -232,11 +228,8 @@ public class ManagedCuratorFramework implements Closeable {
 
     /**
      * Returns true if configuration contains authorization configuration.
-     *
-     * @param properties
-     * @return
      */
-    boolean isAuthorizationConfigured(Map<String, ?> properties) {
+    private boolean isAuthorizationConfigured(Map<String, ?> properties) {
         return ((properties != null
                 && !Strings.isNullOrEmpty((String) properties.get(ZOOKEEPER_PASSWORD))
                 || (!Strings.isNullOrEmpty(System.getProperty(ZOOKEEPER_PASSWORD)))));
@@ -245,11 +238,8 @@ public class ManagedCuratorFramework implements Closeable {
 
     /**
      * Returns true if configuration contains authorization configuration.
-     *
-     * @param properties
-     * @return
      */
-    boolean isRestartRequired(Map<String, ?> oldProperties, Map<String, ?> properties) {
+    private boolean isRestartRequired(Map<String, ?> oldProperties, Map<String, ?> properties) {
         if (oldProperties == null || properties == null) {
             return true;
         } else if (oldProperties.equals(properties)) {
@@ -366,16 +356,11 @@ public class ManagedCuratorFramework implements Closeable {
         }
     }
 
-    @Override
-    public void close() throws IOException {
-        if (registration != null) {
-            try {
-                registration.unregister();
-            } catch (IllegalStateException e) {
-                // Ignore
-            }
-        }
-        Closeables.close(curatorFramework, true);
-        executor.shutdownNow();
+    void bindAclProvider(ACLProvider aclProvider) {
+        this.aclProvider.set(aclProvider);
+    }
+
+    void unbindAclProvider(ACLProvider aclProvider) {
+        this.aclProvider.set(null);
     }
 }

@@ -1,5 +1,14 @@
 package org.fusesource.fabric.api.jmx;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -9,67 +18,47 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.fusesource.fabric.api.CreateEnsembleOptions;
 import org.fusesource.fabric.api.FabricException;
 import org.fusesource.fabric.api.ZooKeeperClusterBootstrap;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.zookeeper.ZkDefs;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author Stan Lewis
  */
-@Component(description = "Fabric ZooKeeper Cluster Bootstrap Manager JMX MBean")
-public class ClusterBootstrapManager implements ClusterBootstrapManagerMBean {
+@ThreadSafe
+@Component(description = "Fabric ZooKeeper Cluster Bootstrap Manager JMX MBean") // Done
+public final class ClusterBootstrapManager extends AbstractComponent implements ClusterBootstrapManagerMBean {
 
     private static final transient Logger LOG = LoggerFactory.getLogger(ClusterBootstrapManager.class);
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private ZooKeeperClusterBootstrap bootstrap;
-
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY, bind = "bindMBeanServer", unbind = "unbindMBeanServer")
-    private MBeanServer mbeanServer;
-
-    private ObjectName objectName;
-
-    public ObjectName getObjectName() throws MalformedObjectNameException {
-        if (objectName == null) {
-            objectName = new ObjectName("org.fusesource.fabric:type=ClusterBootstrapManager");
+    private static ObjectName OBJECT_NAME;
+    static {
+        try {
+            OBJECT_NAME = new ObjectName("org.fusesource.fabric:type=ClusterBootstrapManager");
+        } catch (MalformedObjectNameException e) {
+            // ignore
         }
-        return objectName;
     }
 
-    public void setObjectName(ObjectName objectName) {
-        this.objectName = objectName;
-    }
+    @Reference(referenceInterface = ZooKeeperClusterBootstrap.class)
+    private final ValidatingReference<ZooKeeperClusterBootstrap> bootstrap = new ValidatingReference<ZooKeeperClusterBootstrap>();
+    @Reference(referenceInterface = MBeanServer.class, bind = "bindMBeanServer", unbind = "unbindMBeanServer")
+    private final ValidatingReference<MBeanServer> mbeanServer = new ValidatingReference<MBeanServer>();
 
     @Activate
-    public void init() throws Exception {
-        JMXUtils.registerMBean(this, mbeanServer, getObjectName());
+    void activate(ComponentContext context) throws Exception {
+        JMXUtils.registerMBean(this, mbeanServer.get(), OBJECT_NAME);
+        activateComponent();
     }
 
     @Deactivate
-    public void destroy() throws Exception {
-        JMXUtils.unregisterMBean(mbeanServer, getObjectName());
-    }
-
-    public void bindMBeanServer(MBeanServer mbeanServer) {
-        this.mbeanServer = mbeanServer;
-    }
-
-    public void unbindMBeanServer(MBeanServer mbeanServer) {
-        this.mbeanServer = null;
-    }
-
-    private static void maybeSetProperty(String prop, Object value) {
-        if (value != null) {
-            System.setProperty(prop, value.toString());
-        }
+    void deactivate() throws Exception {
+        deactivateComponent();
+        JMXUtils.unregisterMBean(mbeanServer.get(), OBJECT_NAME);
     }
 
     static CreateEnsembleOptions getCreateEnsembleOptions(Map<String, Object> options) {
@@ -118,15 +107,38 @@ public class ClusterBootstrapManager implements ClusterBootstrapManagerMBean {
         return answer;
     }
 
+    private static void maybeSetProperty(String prop, Object value) {
+        if (value != null) {
+            System.setProperty(prop, value.toString());
+        }
+    }
 
     @Override
     public void createCluster() {
-        bootstrap.create(CreateEnsembleOptions.builder().fromSystemProperties().build());
+        assertValid();
+        bootstrap.get().create(CreateEnsembleOptions.builder().fromSystemProperties().build());
     }
 
     @Override
     public void createCluster(Map<String, Object> options) {
+        assertValid();
         CreateEnsembleOptions createEnsembleOptions = ClusterBootstrapManager.getCreateEnsembleOptions(options);
-        bootstrap.create(createEnsembleOptions);
+        bootstrap.get().create(createEnsembleOptions);
+    }
+
+    void bindMBeanServer(MBeanServer mbeanServer) {
+        this.mbeanServer.set(mbeanServer);
+    }
+
+    void unbindMBeanServer(MBeanServer mbeanServer) {
+        this.mbeanServer.set(null);
+    }
+
+    void bindBootstrap(ZooKeeperClusterBootstrap bootstrap) {
+        this.bootstrap.set(bootstrap);
+    }
+
+    void unbindBootstrap(ZooKeeperClusterBootstrap bootstrap) {
+        this.bootstrap.set(null);
     }
 }

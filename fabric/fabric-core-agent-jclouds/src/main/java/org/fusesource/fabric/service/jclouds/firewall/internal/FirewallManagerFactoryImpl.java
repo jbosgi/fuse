@@ -17,72 +17,73 @@
 
 package org.fusesource.fabric.service.jclouds.firewall.internal;
 
+import static org.apache.felix.scr.annotations.ReferenceCardinality.OPTIONAL_MULTIPLE;
+
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferencePolicy;
 import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
 import org.fusesource.fabric.service.jclouds.firewall.ApiFirewallSupport;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallManager;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallManagerFactory;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallNotSupportedOnProviderException;
 import org.jclouds.compute.ComputeService;
+import org.osgi.service.component.ComponentContext;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.apache.felix.scr.annotations.ReferenceCardinality.OPTIONAL_MULTIPLE;
-
-@Component(name = "org.fusesource.fabric.jclouds.firewall.manager.factory",
-        description = "Fabric Firewall Manager",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.jclouds.firewall.manager.factory", description = "Fabric Firewall Manager", immediate = true) // Done
 @Service(FirewallManagerFactory.class)
-public class FirewallManagerFactoryImpl implements FirewallManagerFactory {
+public final class FirewallManagerFactoryImpl extends AbstractComponent implements FirewallManagerFactory {
 
-    @Reference(cardinality = OPTIONAL_MULTIPLE, bind = "bindApiFirewallSupport", unbind = "unbindApiFirewallSupport", referenceInterface = ApiFirewallSupport.class, policy = ReferencePolicy.DYNAMIC)
-    private final Set<ApiFirewallSupport> firewallSupportModules = new HashSet<ApiFirewallSupport>();
+    @Reference(referenceInterface = ApiFirewallSupport.class, bind = "bindFirewallSupport", unbind = "unbindFirewallSupport", cardinality = OPTIONAL_MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+    @GuardedBy("CopyOnWriteArraySet") private final Set<ApiFirewallSupport> firewallSupport = new CopyOnWriteArraySet<ApiFirewallSupport>();
 
     @Activate
-    public void init() {
-
+    void activate(ComponentContext context) {
+        activateComponent();
     }
 
     @Deactivate
-    public void destroy() {
-
+    void deactivate() {
+        deactivateComponent();
     }
 
     /**
-     * Returns a {@link org.fusesource.fabric.service.jclouds.firewall.FirewallManager} for the specified {@link org.jclouds.compute.ComputeService}.
-     *
-     * @param computeService
-     * @return
+     * Returns a {@link FirewallManager} for the specified {@link ComputeService}.
      */
     @Override
-    public synchronized FirewallManager getFirewallManager(ComputeService computeService) throws FirewallNotSupportedOnProviderException {
-            ApiFirewallSupport firewallSupport = findApiFirewallSupport(computeService);
-            if (firewallSupport == null) {
-                throw new FirewallNotSupportedOnProviderException("Service is currently not supported for firewall operations");
-            }
-            FirewallManager firewallManager = new FirewallManager(computeService, firewallSupport);
-            return firewallManager;
+    public FirewallManager getFirewallManager(ComputeService computeService) throws FirewallNotSupportedOnProviderException {
+        assertValid();
+        ApiFirewallSupport firewallSupport = findApiFirewallSupport(computeService);
+        if (firewallSupport == null) {
+            throw new FirewallNotSupportedOnProviderException("Service is currently not supported for firewall operations");
+        }
+        FirewallManager firewallManager = new FirewallManager(computeService, firewallSupport);
+        return firewallManager;
     }
 
     private ApiFirewallSupport findApiFirewallSupport(ComputeService computeService) {
-        for (ApiFirewallSupport s : firewallSupportModules) {
-           if (s.supports(computeService)) {
-               return s;
-           }
+        for (ApiFirewallSupport s : firewallSupport) {
+            if (s.supports(computeService)) {
+                return s;
+            }
         }
         return null;
     }
 
-    public void bindApiFirewallSupport(ApiFirewallSupport providerSupport) {
-        firewallSupportModules.add(providerSupport);
+    void bindFirewallSupport(ApiFirewallSupport providerSupport) {
+        firewallSupport.add(providerSupport);
     }
 
-    public void unbindApiFirewallSupport(ApiFirewallSupport providerSupport) {
-        firewallSupportModules.remove(providerSupport);
+    void unbindFirewallSupport(ApiFirewallSupport providerSupport) {
+        firewallSupport.remove(providerSupport);
     }
 }

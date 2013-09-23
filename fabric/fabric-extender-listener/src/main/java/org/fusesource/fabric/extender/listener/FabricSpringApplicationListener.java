@@ -23,8 +23,13 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.zookeeper.CreateMode;
 import org.fusesource.fabric.api.ModuleStatus;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleEvent;
 import org.osgi.framework.BundleListener;
 import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
@@ -40,70 +45,87 @@ import org.springframework.osgi.service.importer.event.OsgiServiceDependencyWait
 
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setData;
 
-@Component(name = "org.fusesource.fabric.extender.listener.spring",
-        description = "Fabric Spring Application Listener",
-        immediate = true)
-public class FabricSpringApplicationListener {
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.extender.listener.spring", description = "Fabric Spring Application Listener", immediate = true) // Done
+public final class FabricSpringApplicationListener extends AbstractComponent {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(FabricSpringApplicationListener.class);
 
     private static final String EXTENDER_TYPE = "spring";
 
-    @Reference
-    private CuratorFramework curator;
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
 
-    private ServiceRegistration registration;
-    private BundleListener listener;
+    @GuardedBy("volatile") private volatile ServiceRegistration<?> registration;
+    @GuardedBy("volatile") private volatile BundleListener listener;
 
     @Activate
-    public synchronized void init(BundleContext bundleContext) {
+    void activate(BundleContext bundleContext) {
         listener = createListener(bundleContext);
         if (listener != null) {
-            registration = bundleContext.registerService("org.springframework.osgi.context.event.OsgiBundleApplicationContextListener", listener, null);
+            registration = bundleContext.registerService(OsgiBundleApplicationContextListener.class.getName(), listener, null);
             bundleContext.addBundleListener(listener);
         }
+        activateComponent();
     }
 
     @Deactivate
-    public synchronized void destroy(BundleContext bundleContext) {
+    void deactivate(BundleContext bundleContext) {
+        deactivateComponent();
         if (listener != null) {
-             bundleContext.removeBundleListener(listener);
+            bundleContext.removeBundleListener(listener);
         }
-
         if (registration != null) {
             registration.unregister();
         }
-        this.listener = null;
     }
 
     private BundleListener createListener(BundleContext bundleContext) {
         try {
-            Class cl = getClass().getClassLoader().loadClass("org.fusesource.fabric.blueprint.FabricSpringApplicationListener$SpringApplicationListener");
-            return (BundleListener) cl.getConstructor(CuratorFramework.class).newInstance(curator);
+            // Classloading issues are ignored
+            return new SpringApplicationListener();
         } catch (Throwable t) {
             return null;
         }
     }
 
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
+    }
 
-    public static class SpringApplicationListener extends BaseExtenderListener implements OsgiBundleApplicationContextListener {
-        private static final Logger LOGGER = LoggerFactory.getLogger(FabricBlueprintBundleListener.class);
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
+    }
 
-        public SpringApplicationListener(CuratorFramework curator) {
-            bindCurator(curator);
+    class SpringApplicationListener extends AbstractExtenderListener implements OsgiBundleApplicationContextListener {
+
+        @Override
+        protected CuratorFramework getCurator() {
+            return curator.get();
+        }
+
+        @Override
+        public synchronized void bundleChanged(BundleEvent event) {
+            if (isValid()) {
+                super.bundleChanged(event);
+            }
         }
 
         @Override
         public void onOsgiApplicationEvent(OsgiBundleApplicationContextEvent event) {
-            long bundleId = event.getBundle().getBundleId();
-            try {
-                ModuleStatus moduleStatus = toModuleStatus(event);
-                status.put(bundleId, moduleStatus);
-                setData(getCurator(), ZkPath.CONTAINER_EXTENDER_BUNDLE.getPath(name, getExtenderType(), String.valueOf(bundleId)), moduleStatus.name(), CreateMode.EPHEMERAL);
-                update();
-            } catch (Exception e) {
-                LOGGER.warn("Failed to write blueprint status of bundle {}.", bundleId, e);
+            if (isValid()) {
+                long bundleId = event.getBundle().getBundleId();
+                try {
+                    ModuleStatus moduleStatus = toModuleStatus(event);
+                    putModuleStatus(bundleId, moduleStatus);
+                    setData(getCurator(), ZkPath.CONTAINER_EXTENDER_BUNDLE.getPath(getKarafName(), getExtenderType(), String.valueOf(bundleId)), moduleStatus.name(),
+                            CreateMode.EPHEMERAL);
+                    update();
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to write blueprint status of bundle {}.", bundleId, e);
+                }
             }
         }
-
 
         private ModuleStatus toModuleStatus(OsgiBundleApplicationContextEvent event) {
             if (event instanceof BootstrappingDependencyEvent) {

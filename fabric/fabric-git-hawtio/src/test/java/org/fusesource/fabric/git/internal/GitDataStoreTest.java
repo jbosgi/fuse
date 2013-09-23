@@ -19,9 +19,9 @@ package org.fusesource.fabric.git.internal;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryOneTime;
+import org.easymock.EasyMock;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.StoredConfig;
-import org.fusesource.fabric.git.GitService;
 import org.fusesource.fabric.git.hawtio.FabricGitFacade;
 import org.fusesource.fabric.utils.Strings;
 import org.fusesource.fabric.zookeeper.spring.ZKServerFactoryBean;
@@ -29,6 +29,7 @@ import org.gitective.core.RepositoryUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.osgi.service.component.ComponentContext;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,18 +91,17 @@ public class GitDataStoreTest {
         config.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
         config.save();
 
-        GitService gitService = new FabricGitServiceImpl() {
-            public Git get() throws IOException {
-                return git;
-            }
-        };
+        LocalGitService gitService = new LocalGitService();
+        gitService.activate(EasyMock.createMock(ComponentContext.class));
+        gitService.setGitForTesting(git);
 
         dataStore = createDataStore();
+        dataStore.bindCuratorForTesting(curator);
+        dataStore.bindGitService(gitService);
+        dataStore.activate(EasyMock.createMock(ComponentContext.class));
         Map<String, String> datastoreProperties = new HashMap<String, String>();
         datastoreProperties.put(GitDataStore.GIT_REMOTE_URL, remoteUrl);
         dataStore.setDataStoreProperties(datastoreProperties);
-        dataStore.setCurator(curator);
-        dataStore.setGitService(gitService);
         dataStore.start();
     }
 
@@ -111,7 +111,7 @@ public class GitDataStoreTest {
 
     @After
     public void tearDown() throws Exception {
-        dataStore.destroy();
+        dataStore.deactivate();
         sfb.destroy();
     }
 
@@ -173,8 +173,8 @@ public class GitDataStoreTest {
 
         // now lets write via the hawtio API
         FabricGitFacade hawtio = new FabricGitFacade();
-        hawtio.setGitDataStore(dataStore);
-        hawtio.init();
+        hawtio.bindGitDataStoreForTesting(dataStore);
+        hawtio.activateForTesting();
         String hawtioPropertyFile = "/fabric/profiles/" + dataStore.convertProfileIdToDirectory("hawtio") + "/"
                 + agentPID + ".properties";
         hawtio.write(version, hawtioPropertyFile, "My commit message", "me", "me@apache.org", "# new file\n" + hawtioRepoKey + " = " + "mvn\\:io.hawt/hawtio-karaf/myNewVersion/xml/features"

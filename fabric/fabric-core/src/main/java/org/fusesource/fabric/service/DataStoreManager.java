@@ -28,11 +28,15 @@ import org.fusesource.fabric.api.DataStorePlugin;
 import org.fusesource.fabric.api.DataStoreRegistrationHandler;
 import org.fusesource.fabric.api.DataStoreTemplate;
 import org.fusesource.fabric.api.FabricException;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -49,88 +53,103 @@ import static org.fusesource.fabric.api.DataStore.DEFAULT_DATASTORE_TYPE;
  * Manager of {@link DataStore} using configuration to decide which
  * implementation to export.
  */
-@Component(name = DataStore.DATASTORE_TYPE_PID,
-        description = "Configured DataStore Factory",
-        immediate = true)
+@ThreadSafe
+@Component(name = DataStore.DATASTORE_TYPE_PID, description = "Configured DataStore Factory", immediate = true) // Done
 @Service(DataStoreRegistrationHandler.class)
-public class DataStoreManager implements DataStoreRegistrationHandler {
+public final class DataStoreManager extends AbstractComponent implements DataStoreRegistrationHandler {
+
     private static final transient Logger LOG = LoggerFactory.getLogger(DataStoreManager.class);
 
+    @Reference(referenceInterface = DataStorePlugin.class, bind = "bindDataStore", unbind = "unbindDataStore", cardinality = OPTIONAL_MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+    @GuardedBy("this") private final Map<String, DataStorePlugin> dataStorePlugins = new HashMap<String, DataStorePlugin>();
 
-    @Reference(cardinality = OPTIONAL_MULTIPLE,
-            referenceInterface = DataStorePlugin.class,
-            bind = "bindDataStore", unbind = "unbindDataStore",
-            policy = ReferencePolicy.DYNAMIC)
-    private final Map<String, DataStorePlugin> dataStorePlugins = new HashMap<String, DataStorePlugin>();
+    @GuardedBy("this") private final List<DataStoreTemplate> registrationCallbacks = new CopyOnWriteArrayList<DataStoreTemplate>();
 
-    private BundleContext bundleContext;
-    private Map<String,String> configuration;
+    @GuardedBy("this") private BundleContext bundleContext;
+    @GuardedBy("this") private Map<String,String> configuration;
+    @GuardedBy("this") private String type;
 
-    private String type;
-    private DataStore dataStore;
-    private Dictionary<String, String> properties = new Hashtable<String, String>();
-    private ServiceRegistration<DataStore> registration;
-
-    private final List<DataStoreTemplate> registrationCallbacks = new CopyOnWriteArrayList<DataStoreTemplate>();
-
+    @GuardedBy("this") private DataStore dataStore;
+    @GuardedBy("this") private ServiceRegistration<DataStore> registration;
 
     @Activate
-    public synchronized void init(BundleContext bundleContext, Map<String,String> configuration) throws Exception {
+    synchronized void activate(BundleContext bundleContext, Map<String,String> configuration) {
         this.bundleContext = bundleContext;
-        update(configuration);
+        this.configuration = Collections.unmodifiableMap(configuration);
+        this.type = readType(this.configuration);
+        updateServiceRegistration();
+        activateComponent();
     }
 
     @Modified
-    public synchronized void update(Map<String,String> configuration) {
-        this.configuration = new HashMap<String, String>(configuration);
-        this.type = readType(configuration);
+    synchronized void update(Map<String,String> configuration) {
+        this.configuration = Collections.unmodifiableMap(configuration);
+        this.type = readType(this.configuration);
         updateServiceRegistration();
     }
 
     @Deactivate
-    public synchronized void destroy() {
-        unregister();
+    synchronized void deactivate() {
+        deactivateComponent();
+        unregisterDataStore();
     }
 
-    public void updateServiceRegistration() {
-        unregister();
-        if (dataStorePlugins.containsKey(type)) {
-            dataStore = dataStorePlugins.get(type).getDataStore();
+    @Override
+    public synchronized void addRegistrationCallback(DataStoreTemplate template) {
+        if (isValid()) {
+            // [TODO] What should happen when the callback is registered after the DataStore?
+            registrationCallbacks.add(template);
+        }
+    }
+
+    @Override
+    public synchronized void removeRegistrationCallback(DataStoreTemplate template) {
+        registrationCallbacks.remove(template);
+    }
+
+    private synchronized void updateServiceRegistration() {
+
+        // Always unregister the previous {@link DataStore}
+        unregisterDataStore();
+
+        DataStorePlugin pluginDataStore = dataStorePlugins.get(type);
+        if (pluginDataStore != null) {
+            DataStore auxStore = pluginDataStore.getDataStore();
             Map<String, String> dataStoreProperties = new HashMap<String, String>();
             dataStoreProperties.putAll(configuration);
-            dataStore.setDataStoreProperties(dataStoreProperties);
-            dataStore.start();
+            auxStore.setDataStoreProperties(dataStoreProperties);
+            auxStore.start();
             for(DataStoreTemplate callback : registrationCallbacks) {
                 registrationCallbacks.remove(callback);
                 try {
-                    callback.doWith(dataStore);
+                    callback.doWith(auxStore);
                 } catch (Exception e) {
                     throw new FabricException(e);
                 }
             }
+            Dictionary<String, String> properties = new Hashtable<String, String>();
             properties.put(DATASTORE_TYPE_PROPERTY, type);
-            registration = bundleContext.registerService(DataStore.class, dataStore, properties);
-            LOG.info("Registered DataStore " + dataStore + " with " + properties);
+            registration = bundleContext.registerService(DataStore.class, auxStore, properties);
+            dataStore = auxStore;
+
+            LOG.info("Registered DataStore " + auxStore + " with " + properties);
         }
     }
 
-    /**
-     * Unregisters the {@link DataStore}.
-     */
-    private void unregister() {
+    private synchronized void unregisterDataStore() {
         if (registration != null) {
             registration.unregister();
             registration = null;
         }
         if (dataStore != null) {
             dataStore.stop();
+            dataStore = null;
         }
     }
 
     /**
      * Extracts the type from the specified map or System configuration.
      * @param configuration The map to use as a source.
-     * @return
      */
     private static String readType(Map<String, String> configuration) {
         if (configuration.containsKey(DATASTORE_TYPE_PROPERTY) && configuration.get(DATASTORE_TYPE_PROPERTY) != null) {
@@ -140,52 +159,18 @@ public class DataStoreManager implements DataStoreRegistrationHandler {
         }
     }
 
-
-    // Properties
-    //-------------------------------------------------------------------------
-
-    public BundleContext getBundleContext() {
-        return bundleContext;
-    }
-
-    public void setBundleContext(BundleContext bundleContext) {
-        this.bundleContext = bundleContext;
-    }
-
-
-    public synchronized void bindDataStore(DataStorePlugin dataStorePlugin) {
-        if (dataStorePlugin != null) {
-            dataStorePlugins.put(dataStorePlugin.getType(), dataStorePlugin);
-            if (dataStorePlugin.getType().equals(type)) {
-                updateServiceRegistration();
-            }
+    synchronized void bindDataStore(DataStorePlugin dataStorePlugin) {
+        dataStorePlugins.put(dataStorePlugin.getType(), dataStorePlugin);
+        if (dataStorePlugin.getType().equals(type)) {
+            updateServiceRegistration();
         }
     }
 
-    public synchronized void unbindDataStore(DataStorePlugin dataStorePlugin) {
-        if (dataStorePlugin != null) {
-            dataStorePlugins.remove(dataStorePlugin.getType());
-            if (dataStorePlugin.getType().equals(type)) {
-                updateServiceRegistration();
-            }
+    synchronized void unbindDataStore(DataStorePlugin dataStorePlugin) {
+        dataStorePlugins.remove(dataStorePlugin.getType());
+        if (dataStorePlugin.getType().equals(type)) {
+            updateServiceRegistration();
         }
     }
 
-    public Map<String, String> getConfiguration() {
-        return configuration;
-    }
-
-    public void setConfiguration(Map<String, String> configuration) {
-        this.configuration = configuration;
-    }
-
-    @Override
-    public void addRegistrationCallback(DataStoreTemplate template) {
-        this.registrationCallbacks.add(template);
-    }
-
-    @Override
-    public void removeRegistrationCallback(DataStoreTemplate template) {
-        this.registrationCallbacks.remove(template);
-    }
 }

@@ -26,18 +26,23 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.zookeeper.CreateMode;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.maven.MavenProxy;
 import org.fusesource.fabric.utils.SystemProperties;
 import org.fusesource.fabric.zookeeper.ZkPath;
+import org.osgi.service.component.ComponentContext;
 import org.osgi.service.http.HttpContext;
 import org.osgi.service.http.HttpService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonatype.aether.RepositorySystem;
 import org.sonatype.aether.repository.RepositoryPolicy;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,11 +53,10 @@ import java.util.Set;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.deleteSafe;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.create;
 
-@Component(name = "org.fusesource.fabric.maven",
-        description = "Fabric Maven Proxy Registration Handler",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.maven", description = "Fabric Maven Proxy Registration Handler", immediate = true) // Done
 @Service(ConnectionStateListener.class)
-public class MavenProxyRegistrationHandler implements ConnectionStateListener {
+public final class MavenProxyRegistrationHandler extends AbstractComponent implements ConnectionStateListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MavenProxyRegistrationHandler.class);
 
@@ -74,32 +78,31 @@ public class MavenProxyRegistrationHandler implements ConnectionStateListener {
     private static final String DEFAULT_ROLE = "admin";
     private static final String DEFAULT_REALM = "karaf";
 
-
     private static final String DEFAULT_LOCAL_REPOSITORY = System.getProperty("karaf.data") + File.separator + "maven" + File.separator + "proxy" + File.separator + "downloads";
 
+    private static final String KARAF_NAME = System.getProperty(SystemProperties.KARAF_NAME);
 
-    private final String name = System.getProperty(SystemProperties.KARAF_NAME);
-    private final Map<String, Set<String>> registeredProxies = new HashMap<String, Set<String>>();
+    @Reference(referenceInterface = HttpService.class)
+    private final ValidatingReference<HttpService> httpService = new ValidatingReference<HttpService>();
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private HttpService httpService;
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private CuratorFramework curator;
+    private final Map<String, Set<String>> registeredProxies;
 
-    private String realm;
-    private String role;
-
-    private MavenDownloadProxyServlet mavenDownloadProxyServlet;
-    private MavenUploadProxyServlet mavenUploadProxyServlet;
+    @GuardedBy("volatile") private volatile MavenDownloadProxyServlet mavenDownloadProxyServlet;
+    @GuardedBy("volatile") private volatile MavenUploadProxyServlet mavenUploadProxyServlet;
+    @GuardedBy("volatile") private volatile String realm;
+    @GuardedBy("volatile") private volatile String role;
 
     public MavenProxyRegistrationHandler() {
-        registeredProxies.put(MavenProxy.DOWNLOAD_TYPE, new HashSet<String>());
-        registeredProxies.put(MavenProxy.UPLOAD_TYPE, new HashSet<String>());
+        Map<String, Set<String>> proxies = new HashMap<String, Set<String>>();
+        proxies.put(MavenProxy.DOWNLOAD_TYPE, new HashSet<String>());
+        proxies.put(MavenProxy.UPLOAD_TYPE, new HashSet<String>());
+        registeredProxies = Collections.unmodifiableMap(proxies);
     }
 
-
     @Activate
-    public void init(Map<String, String> properties) throws IOException {
+    void activate(ComponentContext context, Map<String, String> properties) throws IOException {
         String localRepository = readProperty(properties, LOCAL_REPOSITORY_PROPERTY, DEFAULT_LOCAL_REPOSITORY);
         String remoteRepositories = readProperty(properties, REMOTE_REPOSITORIES_PROPERTY, "");
         boolean appendSystemRepos = Boolean.parseBoolean(readProperty(properties, APPEND_SYSTEM_REPOS_PROPERTY, "false"));
@@ -114,75 +117,65 @@ public class MavenProxyRegistrationHandler implements ConnectionStateListener {
 
         this.role = readProperty(properties, REQUIRED_ROLE, DEFAULT_ROLE);
         this.realm = readProperty(properties, REQUIRED_REALM, DEFAULT_REALM);
-        this.mavenDownloadProxyServlet = new MavenDownloadProxyServlet(localRepository, remoteRepositories, appendSystemRepos, updatePolicy, checksumPolicy,proxyProtocol,proxyHost, proxyPort, proxyUsername, proxyPassword, nonProxyHosts);
+        this.mavenDownloadProxyServlet = new MavenDownloadProxyServlet(localRepository, remoteRepositories, appendSystemRepos, updatePolicy, checksumPolicy, proxyProtocol, proxyHost, proxyPort, proxyUsername, proxyPassword, nonProxyHosts);
         this.mavenDownloadProxyServlet.start();
-        this.mavenUploadProxyServlet = new MavenUploadProxyServlet(localRepository, remoteRepositories, appendSystemRepos, updatePolicy, checksumPolicy,proxyProtocol,proxyHost, proxyPort, proxyUsername, proxyPassword, nonProxyHosts);
+        this.mavenUploadProxyServlet = new MavenUploadProxyServlet(localRepository, remoteRepositories, appendSystemRepos, updatePolicy, checksumPolicy, proxyProtocol, proxyHost, proxyPort, proxyUsername, proxyPassword, nonProxyHosts);
         this.mavenUploadProxyServlet.start();
-
         try {
-            HttpContext base = httpService.createDefaultHttpContext();
+            HttpContext base = httpService.get().createDefaultHttpContext();
             HttpContext secure = new MavenSecureHttpContext(base, realm, role);
-            httpService.registerServlet("/maven/download", mavenDownloadProxyServlet, createParams("maven-download"), base);
-            httpService.registerServlet("/maven/upload", mavenUploadProxyServlet, createParams("maven-upload"), secure);
+            httpService.get().registerServlet("/maven/download", mavenDownloadProxyServlet, createParams("maven-download"), base);
+            httpService.get().registerServlet("/maven/upload", mavenUploadProxyServlet, createParams("maven-upload"), secure);
         } catch (Throwable t) {
             LOGGER.warn("Failed to register fabric maven proxy servlets, due to:" + t.getMessage());
         }
+        activateComponent();
     }
 
     @Deactivate
-    public void destroy() {
+    synchronized void deactivate() {
+        deactivateComponent();
         if (mavenDownloadProxyServlet != null) {
-            this.mavenDownloadProxyServlet.stop();
+            mavenDownloadProxyServlet.stop();
         }
-
         if (mavenUploadProxyServlet != null) {
-            this.mavenUploadProxyServlet.stop();
+            mavenUploadProxyServlet.stop();
         }
 
         unregister(MavenProxy.DOWNLOAD_TYPE);
         unregister(MavenProxy.UPLOAD_TYPE);
         try {
-            if (httpService != null) {
-                httpService.unregister("/maven/download");
-                httpService.unregister("/maven/upload");
-            }
+            httpService.get().unregister("/maven/download");
+            httpService.get().unregister("/maven/upload");
         } catch (Exception ex) {
             LOGGER.warn("Http service returned error on servlet unregister. Possibly the service has already been stopped");
         }
     }
 
-    public void bindHttpService(HttpService httpService) {
-        this.httpService = httpService;
-    }
-
-    public void unbindHttpService(HttpService httpService) {
-        this.httpService = null;
-    }
-
-    private Dictionary createParams(String name) {
-        Dictionary d = new Hashtable();
+    private Dictionary<String, String> createParams(String name) {
+        Dictionary<String, String> d = new Hashtable<String, String>();
         d.put("servlet-name", name);
         return d;
     }
 
-    public void register(String type) {
+    private void register(String type) {
         unregister(type);
         try {
-            String mavenProxyUrl = "${zk:" + name + "/http}/maven/" + type + "/";
+            String mavenProxyUrl = "${zk:" + KARAF_NAME + "/http}/maven/" + type + "/";
             String parentPath = ZkPath.MAVEN_PROXY.getPath(type);
             String path = parentPath + "/p_";
-            registeredProxies.get(type).add(create(curator, path, mavenProxyUrl, CreateMode.EPHEMERAL_SEQUENTIAL));
+            registeredProxies.get(type).add(create(curator.get(), path, mavenProxyUrl, CreateMode.EPHEMERAL_SEQUENTIAL));
         } catch (Exception e) {
             LOGGER.warn("Failed to register maven proxy.");
         }
     }
 
-    public void unregister(String type) {
+    private void unregister(String type) {
         Set<String> proxyNodes = registeredProxies.get(type);
         if (proxyNodes != null) {
             try {
                 for (String entry : registeredProxies.get(type)) {
-                    deleteSafe(curator, entry);
+                    deleteSafe(curator.get(), entry);
                 }
             } catch (Exception e) {
                 LOGGER.warn("Failed to remove maven proxy from registry.");
@@ -195,46 +188,31 @@ public class MavenProxyRegistrationHandler implements ConnectionStateListener {
         return properties != null && properties.containsKey(key) ? properties.get(key) : defaultValue;
     }
 
-
-    public MavenDownloadProxyServlet getMavenDownloadProxyServlet() {
-        return mavenDownloadProxyServlet;
-    }
-
-    public void setMavenDownloadProxyServlet(MavenDownloadProxyServlet mavenDownloadProxyServlet) {
-        this.mavenDownloadProxyServlet = mavenDownloadProxyServlet;
-    }
-
-    public MavenUploadProxyServlet getMavenUploadProxyServlet() {
-        return mavenUploadProxyServlet;
-    }
-
-    public void setMavenUploadProxyServlet(MavenUploadProxyServlet mavenUploadProxyServlet) {
-        this.mavenUploadProxyServlet = mavenUploadProxyServlet;
-    }
-
-    public String getRealm() {
-        return realm;
-    }
-
-    public void setRealm(String realm) {
-        this.realm = realm;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
     @Override
     public void stateChanged(CuratorFramework client, ConnectionState newState) {
-        switch (newState) {
+        if (isValid()) {
+            switch (newState) {
             case CONNECTED:
             case RECONNECTED:
                 register(MavenProxy.DOWNLOAD_TYPE);
                 register(MavenProxy.UPLOAD_TYPE);
+            }
         }
+    }
+
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
+    }
+
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
+    }
+
+    void bindHttpService(HttpService service) {
+        this.httpService.set(service);
+    }
+
+    void unbindHttpService(HttpService service) {
+        this.httpService.set(null);
     }
 }

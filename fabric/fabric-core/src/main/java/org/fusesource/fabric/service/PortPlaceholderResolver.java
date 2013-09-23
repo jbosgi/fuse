@@ -16,32 +16,46 @@
  */
 package org.fusesource.fabric.service;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
-import org.fusesource.fabric.api.FabricService;
-import org.fusesource.fabric.api.PlaceholderResolver;
-import org.fusesource.fabric.utils.Ports;
-
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Component(name = "org.fusesource.fabric.placholder.resolver.port",
-           description = "Fabric Port Placeholder Resolver", immediate = true)
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.FabricService;
+import org.fusesource.fabric.api.PlaceholderResolver;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.fusesource.fabric.utils.Ports;
+import org.osgi.service.component.ComponentContext;
+
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.placholder.resolver.port", description = "Fabric Port Placeholder Resolver", immediate = true) // Done
 @Service(PlaceholderResolver.class)
-public class PortPlaceholderResolver implements PlaceholderResolver {
+public final class PortPlaceholderResolver extends AbstractComponent implements PlaceholderResolver {
 
     private static final String PORT_SCHEME = "port";
     private static final Pattern PORT_PROPERTY_URL_PATTERN = Pattern.compile("port:([\\d]+),([\\d]+)");
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService fabricService;
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
+
+    @Activate
+    synchronized void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    synchronized void deactivate() {
+        deactivateComponent();
+    }
 
     /**
      * The placeholder scheme.
-     *
-     * @return
      */
     @Override
     public String getScheme() {
@@ -59,7 +73,8 @@ public class PortPlaceholderResolver implements PlaceholderResolver {
      * @return The resolved value or EMPTY_STRING.
      */
     @Override
-    public synchronized String resolve(String pid, String key, String value) {
+    public String resolve(String pid, String key, String value) {
+        assertValid();
         Matcher matcher = PORT_PROPERTY_URL_PATTERN.matcher(value);
         if (!matcher.matches()) {
             throw new IllegalArgumentException("Value doesn't match the port substitution pattern: port:<from port>,<to port>");
@@ -71,16 +86,16 @@ public class PortPlaceholderResolver implements PlaceholderResolver {
         int fromPort = Integer.parseInt(fromPortValue);
         int toPort = Integer.parseInt(toPortValue);
         Set<Integer> locallyAllocatedPorts = Ports.findUsedPorts(fromPort, toPort);
-        int port = fabricService.getPortService().registerPort(fabricService.getCurrentContainer(), pid, key, fromPort, toPort, locallyAllocatedPorts);
+        int port = fabricService.get().getPortService().registerPort(fabricService.get().getCurrentContainer(), pid, key, fromPort, toPort, locallyAllocatedPorts);
         return String.valueOf(port);
     }
 
 
-    public FabricService getFabricService() {
-        return fabricService;
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
     }
 
-    public void setFabricService(FabricService fabricService) {
-        this.fabricService = fabricService;
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
     }
 }

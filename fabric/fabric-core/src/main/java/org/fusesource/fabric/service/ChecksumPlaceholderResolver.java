@@ -16,24 +16,39 @@
  */
 package org.fusesource.fabric.service;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
-import org.fusesource.fabric.api.PlaceholderResolver;
-import org.fusesource.fabric.utils.ChecksumUtils;
-import org.fusesource.fabric.utils.Closeables;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.InputStream;
 import java.net.URL;
 
-@Component(name = "org.fusesource.fabric.placholder.resolver.checksum",
-           description = "Fabric Checksum Placholder Resolver")
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.PlaceholderResolver;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.utils.ChecksumUtils;
+import org.fusesource.fabric.utils.Closeables;
+import org.osgi.service.component.ComponentContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.placholder.resolver.checksum", description = "Fabric Checksum Placholder Resolver") // Done
 @Service(PlaceholderResolver.class)
-public class ChecksumPlaceholderResolver implements PlaceholderResolver {
+public final class ChecksumPlaceholderResolver extends AbstractComponent implements PlaceholderResolver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChecksumPlaceholderResolver.class);
     private static final String CHECKSUM_SCHEME = "checksum";
+
+    @Activate
+    void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
+    }
 
     @Override
     public String getScheme() {
@@ -42,6 +57,7 @@ public class ChecksumPlaceholderResolver implements PlaceholderResolver {
 
     @Override
     public String resolve(String pid, String key, String value) {
+        assertValid();
         InputStream is = null;
         try {
             URL url = new URL(value.substring("checksum:".length()));

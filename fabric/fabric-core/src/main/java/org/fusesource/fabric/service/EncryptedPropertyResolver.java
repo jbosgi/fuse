@@ -16,27 +16,44 @@
  */
 package org.fusesource.fabric.service;
 
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
-import org.fusesource.fabric.api.FabricException;
-import org.fusesource.fabric.api.PlaceholderResolver;
-import org.jasypt.encryption.pbe.PBEStringEncryptor;
-import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
-
 import static org.fusesource.fabric.zookeeper.ZkPath.AUTHENTICATION_CRYPT_ALGORITHM;
 import static org.fusesource.fabric.zookeeper.ZkPath.AUTHENTICATION_CRYPT_PASSWORD;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.getStringData;
 
-@Component(name = "org.fusesource.fabric.placholder.resolver.crypt",
-           description = "Fabric Encrypted Property Placeholder Resolver")
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.FabricException;
+import org.fusesource.fabric.api.PlaceholderResolver;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.jasypt.encryption.pbe.PBEStringEncryptor;
+import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
+import org.osgi.service.component.ComponentContext;
+
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.placholder.resolver.crypt", description = "Fabric Encrypted Property Placeholder Resolver") // Done
 @Service(PlaceholderResolver.class)
-public class EncryptedPropertyResolver implements PlaceholderResolver {
+public final class EncryptedPropertyResolver extends AbstractComponent implements PlaceholderResolver {
 
     private static final String CRYPT_SCHEME = "crypt";
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private CuratorFramework curator;
+
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
+
+    @Activate
+    void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
+    }
 
     @Override
     public String getScheme() {
@@ -44,7 +61,8 @@ public class EncryptedPropertyResolver implements PlaceholderResolver {
     }
 
     @Override
-    public synchronized String resolve(String pid, String key, String value) {
+    public String resolve(String pid, String key, String value) {
+        assertValid();
         return getEncryptor().decrypt(value.substring(CRYPT_SCHEME.length() + 1));
     }
 
@@ -57,7 +75,7 @@ public class EncryptedPropertyResolver implements PlaceholderResolver {
 
     private String getAlgorithm() {
         try {
-            return getStringData(curator, AUTHENTICATION_CRYPT_ALGORITHM.getPath());
+            return getStringData(curator.get(), AUTHENTICATION_CRYPT_ALGORITHM.getPath());
         } catch (Exception e) {
             throw new FabricException(e);
         }
@@ -65,17 +83,17 @@ public class EncryptedPropertyResolver implements PlaceholderResolver {
 
     private String getPassword() {
         try {
-            return getStringData(curator, AUTHENTICATION_CRYPT_PASSWORD.getPath());
+            return getStringData(curator.get(), AUTHENTICATION_CRYPT_PASSWORD.getPath());
         } catch (Exception e) {
             throw new FabricException(e);
         }
     }
 
-    public CuratorFramework getCurator() {
-        return curator;
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
     }
 
-    public void setCurator(CuratorFramework curator) {
-        this.curator = curator;
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
     }
 }

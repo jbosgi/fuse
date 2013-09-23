@@ -17,17 +17,6 @@
  */
 package org.fusesource.fabric.service;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Properties;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
-import org.fusesource.fabric.api.FabricService;
-import org.fusesource.fabric.api.PlaceholderResolver;
-import org.fusesource.fabric.api.Profile;
-import org.osgi.service.url.AbstractURLStreamHandlerService;
-import org.osgi.service.url.URLStreamHandlerService;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,25 +25,65 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Map;
 
-@Component(name = "org.fusesource.fabric.profile.urlhandler",
-           description = "Fabric Profile URL Handler", immediate = true)
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Properties;
+import org.apache.felix.scr.annotations.Property;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.FabricService;
+import org.fusesource.fabric.api.Profile;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.Validatable;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.fusesource.fabric.api.scr.ValidationSupport;
+import org.osgi.service.component.ComponentContext;
+import org.osgi.service.url.AbstractURLStreamHandlerService;
+import org.osgi.service.url.URLStreamHandlerService;
+
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.profile.urlhandler", description = "Fabric Profile URL Handler", immediate = true) // Done
 @Service(URLStreamHandlerService.class)
 @Properties({
         @Property(name = "url.handler.protocol", value = "profile")
 })
-public class ProfileUrlHandler extends AbstractURLStreamHandlerService {
+public final class ProfileUrlHandler extends AbstractURLStreamHandlerService implements Validatable {
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService fabricService;
     private static final String SYNTAX = "profile:<resource name>";
 
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
+
+    private final ValidationSupport active = new ValidationSupport();
+
+    @Activate
+    void activate(ComponentContext context) {
+        active.setValid();;
+    }
+
+    @Deactivate
+    void deactivate() {
+        active.setInvalid();;
+    }
+
+    @Override
+    public boolean isValid() {
+        return active.isValid();
+    }
+
+    @Override
+    public void assertValid() {
+        active.assertValid();
+    }
 
     @Override
     public URLConnection openConnection(URL url) throws IOException {
+        assertValid();
         return new Connection(url);
     }
 
-    public class Connection extends URLConnection {
+    private class Connection extends URLConnection {
 
         public Connection(URL url) throws MalformedURLException {
             super(url);
@@ -71,12 +100,14 @@ public class ProfileUrlHandler extends AbstractURLStreamHandlerService {
 
         @Override
         public void connect() throws IOException {
+            assertValid();
         }
 
         @Override
         public InputStream getInputStream() throws IOException {
+            assertValid();
             String path = url.getPath();
-            Profile profile = fabricService.getCurrentContainer().getOverlayProfile();
+            Profile profile = fabricService.get().getCurrentContainer().getOverlayProfile();
 
             Map<String, byte[]> configs = profile.getFileConfigurations();
             if (configs.containsKey(path)) {
@@ -86,5 +117,13 @@ public class ProfileUrlHandler extends AbstractURLStreamHandlerService {
                 throw new IllegalArgumentException("Resource " + path + " does not exist in the profile overlay.");
             }
         }
+    }
+
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
+    }
+
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
     }
 }

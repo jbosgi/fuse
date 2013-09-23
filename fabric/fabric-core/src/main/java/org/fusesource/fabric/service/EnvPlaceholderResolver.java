@@ -16,16 +16,32 @@
  */
 package org.fusesource.fabric.service;
 
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Service;
 import org.fusesource.fabric.api.PlaceholderResolver;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.osgi.service.component.ComponentContext;
 
-@Component(name = "org.fusesource.fabric.placholder.resolver.env",
-        description = "Environment Placeholder Resolver")
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.placholder.resolver.env", description = "Environment Placeholder Resolver") // Done
 @Service(PlaceholderResolver.class)
-public class EnvPlaceholderResolver implements PlaceholderResolver {
+public final class EnvPlaceholderResolver extends AbstractComponent implements PlaceholderResolver {
 
     private static final String ENV_SCHEME = "env";
+
+    @Activate
+    void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
+    }
+
     @Override
     public String getScheme() {
         return ENV_SCHEME;
@@ -33,6 +49,7 @@ public class EnvPlaceholderResolver implements PlaceholderResolver {
 
     @Override
     public String resolve(String pid, String key, String value) {
+        assertValid();
         if (value != null && value.length() > ENV_SCHEME.length())  {
             String name = value.substring(ENV_SCHEME.length() + 1);
             return System.getenv(name);

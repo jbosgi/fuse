@@ -17,8 +17,14 @@
 
 package org.fusesource.fabric.service.jclouds.firewall.internal;
 
+import java.util.Set;
+
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
 import org.fusesource.fabric.service.jclouds.firewall.ApiFirewallSupport;
 import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeService;
@@ -28,29 +34,33 @@ import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpPermission;
 import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.SecurityGroup;
+import org.osgi.service.component.ComponentContext;
 
-import java.util.Set;
-
-@Component(name = "org.fusesource.fabric.jclouds.firewall.ec2",
-        description = "Fabric Firewall Support for EC2",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.jclouds.firewall.ec2", description = "Fabric Firewall Support for EC2", immediate = true) // Done
 @Service(ApiFirewallSupport.class)
-public class Ec2FirewallSupport implements ApiFirewallSupport {
+public final class Ec2FirewallSupport extends AbstractComponent implements ApiFirewallSupport {
 
-    ApiFirewallSupport delegate;
+    private final ApiFirewallSupport delegate = new Ec2SupportDelegate();
+
+    @Activate
+    void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
+    }
 
     /**
      * Authorizes access to the specified ports of the node, from the specified source.
-     *
-     * @param service
-     * @param node
-     * @param source
-     * @param ports
      */
     @Override
     public void authorize(ComputeService service, NodeMetadata node, String source, int... ports) {
+        assertValid();
         try {
-            getDelegate().authorize(service, node, source, ports);
+            delegate.authorize(service, node, source, ports);
         } catch (NoClassDefFoundError ex) {
             //ignore
         }
@@ -58,16 +68,12 @@ public class Ec2FirewallSupport implements ApiFirewallSupport {
 
     /**
      * Revokes access to the specified ports of the node, from the specified source.
-     *
-     * @param service
-     * @param node
-     * @param source
-     * @param ports
      */
     @Override
     public void revoke(ComputeService service, NodeMetadata node, String source, int... ports) {
+        assertValid();
         try {
-            getDelegate().revoke(service, node, source, ports);
+            delegate.revoke(service, node, source, ports);
         } catch (NoClassDefFoundError ex) {
             //ignore
         }
@@ -75,41 +81,27 @@ public class Ec2FirewallSupport implements ApiFirewallSupport {
 
     /**
      * Removes all rules.
-     *
-     * @param service
-     * @param node
      */
     @Override
     public void flush(ComputeService service, NodeMetadata node) {
-        getDelegate().flush(service, node);
+        assertValid();
+        delegate.flush(service, node);
     }
 
     @Override
     public boolean supports(ComputeService computeService) {
+        assertValid();
         try {
-            return getDelegate().supports(computeService);
+            return delegate.supports(computeService);
         } catch (NoClassDefFoundError ex) {
             return false;
         }
     }
 
-    private synchronized ApiFirewallSupport getDelegate() {
-        if (this.delegate == null) {
-            this.delegate = new Ec2SupportDelegate();
-        }
-        return delegate;
-    }
-
-
     private static final class Ec2SupportDelegate implements ApiFirewallSupport {
 
         /**
          * Authorizes access to the specified ports of the node, from the specified source.
-         *
-         * @param service
-         * @param node
-         * @param source
-         * @param ports
          */
         @Override
         public void authorize(ComputeService service, NodeMetadata node, String source, int... ports) {
@@ -129,11 +121,6 @@ public class Ec2FirewallSupport implements ApiFirewallSupport {
 
         /**
          * Revokes access to the specified ports of the node, from the specified source.
-         *
-         * @param service
-         * @param node
-         * @param source
-         * @param ports
          */
         @Override
         public void revoke(ComputeService service, NodeMetadata node, String source, int... ports) {

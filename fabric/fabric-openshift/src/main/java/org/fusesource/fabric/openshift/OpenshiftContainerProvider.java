@@ -16,18 +16,18 @@
  */
 package org.fusesource.fabric.openshift;
 
-import com.openshift.client.ApplicationScale;
-import com.openshift.client.IApplication;
-import com.openshift.client.IDomain;
-import com.openshift.client.IHttpClient;
-import com.openshift.client.IOpenShiftConnection;
-import com.openshift.client.IUser;
-import com.openshift.client.cartridge.EmbeddableCartridge;
-import com.openshift.client.cartridge.IEmbeddableCartridge;
-import com.openshift.internal.client.GearProfile;
-import com.openshift.internal.client.StandaloneCartridge;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Modified;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
@@ -40,23 +40,29 @@ import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.NameValidator;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.api.Version;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.openshift.client.ApplicationScale;
+import com.openshift.client.IApplication;
+import com.openshift.client.IDomain;
+import com.openshift.client.IHttpClient;
+import com.openshift.client.IOpenShiftConnection;
+import com.openshift.client.IUser;
+import com.openshift.client.cartridge.EmbeddableCartridge;
+import com.openshift.client.cartridge.IEmbeddableCartridge;
+import com.openshift.internal.client.GearProfile;
+import com.openshift.internal.client.StandaloneCartridge;
 
-
-@Component(name = "org.fusesource.fabric.container.provider.openshift",
-        description = "Fabric Openshift Container Provider",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.container.provider.openshift", description = "Fabric Openshift Container Provider", immediate = true) // Done
 @Service(ContainerProvider.class)
-public class OpenshiftContainerProvider implements
-        ContainerProvider<CreateOpenshiftContainerOptions, CreateOpenshiftContainerMetadata>, ContainerAutoScalerFactory {
+public final class OpenshiftContainerProvider extends AbstractComponent implements ContainerProvider<CreateOpenshiftContainerOptions, CreateOpenshiftContainerMetadata>, ContainerAutoScalerFactory {
 
     public static final String PROPERTY_AUTOSCALE_SERVER_URL = "autoscale.server.url";
     public static final String PROPERTY_AUTOSCALE_LOGIN = "autoscale.login";
@@ -65,31 +71,48 @@ public class OpenshiftContainerProvider implements
 
     private static final transient Logger LOG = LoggerFactory.getLogger(OpenshiftContainerProvider.class);
 
-    private static final String SCHEME = "openshift";
-
     private static final String REGISTRY_CART = "https://raw.github.com/jboss-fuse/fuse-registry-openshift-cartridge/master/metadata/manifest.yml";
     private static final String PLAIN_CART = "https://raw.github.com/jboss-fuse/fuse-openshift-cartridge/master/metadata/manifest.yml";
+    private static final String SCHEME = "openshift";
 
-    @Reference(cardinality = ReferenceCardinality.OPTIONAL_UNARY)
-    private IOpenShiftConnection connection;
+    @Reference(referenceInterface = IOpenShiftConnection.class, cardinality = ReferenceCardinality.OPTIONAL_UNARY)
+    private final ValidatingReference<IOpenShiftConnection> openShiftConnection = new ValidatingReference<IOpenShiftConnection>();
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService fabricService;
-
-    private Map<String, String> properties = new HashMap<String, String>();
+    @GuardedBy("AtomicReference") private final AtomicReference<Map<String, String>> properties = new AtomicReference<Map<String, String>>();
 
     @Activate
-    private void init(Map<String, String> properties) {
-       updated(properties);
+    void activate(ComponentContext context, Map<String, String> properties) {
+        updateConfiguration(properties);
+        activateComponent();
     }
 
     @Modified
-    private void updated(Map<String, String> properties) {
-        this.properties = properties;
+    void updated(Map<String, String> properties) {
+        updateConfiguration(properties);
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
+    }
+
+    private void updateConfiguration(Map<String, String> config) {
+        properties.set(Collections.unmodifiableMap(new HashMap<String, String>(config)));
+    }
+
+    FabricService getFabricService() {
+        return fabricService.get();
+    }
+
+    Map<String, String> getProperties() {
+        return properties.get();
     }
 
     @Override
     public Set<CreateOpenshiftContainerMetadata> create(CreateOpenshiftContainerOptions options) throws Exception {
+        assertValid();
         Set<CreateOpenshiftContainerMetadata> metadata = new HashSet<CreateOpenshiftContainerMetadata>();
         IUser user = getOrCreateConnection(options).getUser();
         IDomain domain =  getOrCreateDomain(user, options);
@@ -99,7 +122,7 @@ public class OpenshiftContainerProvider implements
         String versionId = options.getVersion();
         Map<String, String> openshiftConfigOverlay = new HashMap<String, String>();
         if (profiles != null && versionId != null) {
-            Version version = fabricService.getVersion(versionId);
+            Version version = fabricService.get().getVersion(versionId);
             if (version != null) {
                 for (String profileId : profiles) {
                     Profile profile = version.getProfile(profileId);
@@ -130,8 +153,8 @@ public class OpenshiftContainerProvider implements
         String standAloneCartridgeUrl = cartridgeUrls[0];
         StandaloneCartridge cartridge = new StandaloneCartridge(standAloneCartridgeUrl);
 
-        String zookeeperUrl = fabricService.getZookeeperUrl();
-        String zookeeperPassword = fabricService.getZookeeperPassword();
+        String zookeeperUrl = fabricService.get().getZookeeperUrl();
+        String zookeeperPassword = fabricService.get().getZookeeperPassword();
 
         Map<String,String> userEnvVars = new HashMap<String, String>();
         if (fuseCart) {
@@ -180,31 +203,37 @@ public class OpenshiftContainerProvider implements
 
     @Override
     public void start(Container container) {
+        assertValid();
         getContainerApplication(container).start();
     }
 
     @Override
     public void stop(Container container) {
+        assertValid();
         getContainerApplication(container).stop();
     }
 
     @Override
     public void destroy(Container container) {
+        assertValid();
         getContainerApplication(container).destroy();
     }
 
     @Override
     public String getScheme() {
+        assertValid();
         return SCHEME;
     }
 
     @Override
     public Class<CreateOpenshiftContainerOptions> getOptionsType() {
+        assertValid();
         return CreateOpenshiftContainerOptions.class;
     }
 
     @Override
     public Class<CreateOpenshiftContainerMetadata> getMetadataType() {
+        assertValid();
         return CreateOpenshiftContainerMetadata.class;
     }
 
@@ -221,9 +250,6 @@ public class OpenshiftContainerProvider implements
     /**
      * Gets a {@link IDomain} that matches the specified {@link CreateOpenshiftContainerOptions}.
      * If no domain has been provided in the options the default domain is used. Else one is returned or created.
-     * @param user          The openshift user.
-     * @param options       The create options.
-     * @return
      */
     private static IDomain getOrCreateDomain(IUser user, CreateOpenshiftContainerOptions options)  {
         if (options.getDomain() == null || options.getDomain().isEmpty()) {
@@ -235,9 +261,6 @@ public class OpenshiftContainerProvider implements
 
     /**
      * Checks if there is a {@link IDomain} matching the specified domainId.
-     * @param user          The {@link IUser} to use.
-     * @param domainId      The domainId.
-     * @return              True if a matching domain is found.
      */
     private static boolean domainExists(IUser user, String domainId) {
         for (IDomain domain : user.getDomains()) {
@@ -248,8 +271,8 @@ public class OpenshiftContainerProvider implements
         return false;
     }
 
-
     private IOpenShiftConnection getOrCreateConnection(CreateOpenshiftContainerOptions options) {
+        IOpenShiftConnection connection = openShiftConnection.getOptional();
         if (connection != null) {
             return connection;
         } else {
@@ -262,12 +285,12 @@ public class OpenshiftContainerProvider implements
         return new OpenShiftAutoScaler(this);
     }
 
-    public Map<String, String> getProperties() {
-        return properties;
+    void bindOpenShiftConnection(IOpenShiftConnection service) {
+        this.openShiftConnection.set(service);
     }
 
-    public FabricService getFabricService() {
-        return fabricService;
+    void unbindOpenShiftConnection(IOpenShiftConnection service) {
+        this.openShiftConnection.set(null);
     }
 
     /**
@@ -283,6 +306,13 @@ public class OpenshiftContainerProvider implements
                 return application == null;
             }
         };
+    }
 
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
+    }
+
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
     }
 }

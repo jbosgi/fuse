@@ -16,10 +16,10 @@
 
 package org.fusesource.fabric.partition.internal.profile;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.curator.utils.ZKPaths;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -29,78 +29,75 @@ import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.api.Version;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.partition.Partition;
 import org.fusesource.fabric.partition.PartitionListener;
-import org.fusesource.fabric.partition.internal.LoggingPartitionListener;
 import org.mvel2.ParserContext;
 import org.mvel2.templates.CompiledTemplate;
 import org.mvel2.templates.TemplateCompiler;
 import org.mvel2.templates.TemplateRuntime;
+import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.SetMultimap;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
-@Component(name = "org.fusesource.fabric.partition.listener.profile",
-        description = "Fabric Profile Partition Listener",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.partition.listener.profile", description = "Fabric Profile Partition Listener", immediate = true) // Done
 @Service(PartitionListener.class)
-public class ProfilePartitionListener implements PartitionListener {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingPartitionListener.class);
+public final class ProfilePartitionListener extends AbstractComponent implements PartitionListener {
 
     private static final String ID = "id";
     private static final String TYPE = "profile-template";
     private static final String NAME_VARIABLE_FORMAT = "__%s__";
 
-    private final ConcurrentMap<Key, CompiledTemplate> templates = new ConcurrentHashMap<Key, CompiledTemplate>();
-    private final SetMultimap<String, Partition> assignedPartitons = Multimaps.synchronizedSetMultimap(HashMultimap.<String, Partition>create());
-    private final ParserContext parserContext = new ParserContext();
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
 
-
-
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService fabricService;
-
-    public ProfilePartitionListener() {
-    }
-
-    @Override
-    public String getType() {
-        return TYPE;
-    }
+    @GuardedBy("this") private final Map<Key, CompiledTemplate> templates = new HashMap<Key, CompiledTemplate>();
+    @GuardedBy("this") private final SetMultimap<String, Partition> assignedPartitons = HashMultimap.<String, Partition>create();
+    @GuardedBy("this") private final ParserContext parserContext = new ParserContext();
 
     @Activate
-    public synchronized void init() {
-
+    void activate(ComponentContext context) {
+        activateComponent();
     }
 
     @Deactivate
-    public synchronized void destroy() {
+    void deactivate() {
+        deactivateComponent();
+        destroyInternal();
+    }
+
+    @Override
+    public void init() {
+        throw new UnsupportedOperationException("PartitionListener life cycle is managed");
+    }
+
+    @Override
+    public void destroy() {
+        throw new UnsupportedOperationException("PartitionListener life cycle is managed");
+    }
+
+    private synchronized void destroyInternal() {
         for (String taskDefinition : assignedPartitons.keySet()) {
             stop(null, taskDefinition, assignedPartitons.get(taskDefinition));
         }
     }
 
-    public synchronized void unbindFabricService(FabricService fabricService) {
-        this.fabricService = null;
+    @Override
+    public String getType() {
+        assertValid();
+        return TYPE;
     }
-
-    public synchronized void bindFabricService(FabricService fabricService) {
-        this.fabricService = fabricService;
-    }
-
 
     @Override
     public synchronized void start(String taskId, String taskDefinition, Set<Partition> partitions) {
-        if (fabricService == null) {
-            LOGGER.warn("Cannot start {}. Fabric Service is unavailable.", taskDefinition);
-        }
-        Container current = fabricService.getCurrentContainer();
+        assertValid();
+        Container current = fabricService.get().getCurrentContainer();
         Version version = current.getVersion();
         Profile templateProfile = version.getProfile(taskDefinition);
         Iterable<String> fileTemplates = Iterables.filter(templateProfile.getFileConfigurations().keySet(), new MvelPredicate());
@@ -141,14 +138,12 @@ public class ProfilePartitionListener implements PartitionListener {
 
     @Override
     public synchronized void stop(String taskId, String taskDefinition, Set<Partition> partitions) {
-        if (fabricService == null) {
-            LOGGER.warn("Cannot stop {}. Fabric Service is unavailable.", taskDefinition);
-        }
-        Container current = fabricService.getCurrentContainer();
+        assertValid();
+        Container current = fabricService.get().getCurrentContainer();
         Version version = current.getVersion();
         for (Partition partition : partitions) {
             String profileId = taskDefinition + "-" + ZKPaths.getNodeFromPath(partition.getId());
-            Profile toBeRemoved = fabricService.getVersion(version.getId()).getProfile(profileId);
+            Profile toBeRemoved = fabricService.get().getVersion(version.getId()).getProfile(profileId);
             current.removeProfiles(toBeRemoved);
             assignedPartitons.remove(taskDefinition, partition);
             toBeRemoved.delete();
@@ -156,11 +151,18 @@ public class ProfilePartitionListener implements PartitionListener {
     }
 
     private String renderTemplateName(String name, Map<String, String> properties) {
-        String result = name;
         for (Map.Entry<String, String> entry : properties.entrySet()) {
             name = name.replaceAll(String.format(NAME_VARIABLE_FORMAT, entry.getKey()), entry.getValue());
         }
         return name.substring(0, name.lastIndexOf("."));
+    }
+
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
+    }
+
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
     }
 
     private static class Key {

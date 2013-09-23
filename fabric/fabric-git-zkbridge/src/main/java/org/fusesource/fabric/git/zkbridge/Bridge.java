@@ -33,13 +33,18 @@ import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-import org.fusesource.fabric.git.GitService;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.groups.GroupListener;
 import org.fusesource.fabric.groups.Group;
 import org.fusesource.fabric.groups.internal.ZooKeeperGroup;
+import org.fusesource.fabric.git.FabricGitService;
 import org.fusesource.fabric.utils.Closeables;
 import org.fusesource.fabric.utils.Files;
 import org.fusesource.fabric.zookeeper.ZkPath;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,31 +77,28 @@ import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.lastModified;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setData;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setPropertiesAsMap;
 
-@Component(name = "org.fusesource.fabric.git.zkbridge",
-        description = "Fabric Git / ZooKeeper Bridge",
-        immediate = true, policy = ConfigurationPolicy.OPTIONAL)
-public class Bridge implements GroupListener<GitZkBridgeNode> {
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.git.zkbridge", description = "Fabric Git / ZooKeeper Bridge", immediate = true, policy = ConfigurationPolicy.OPTIONAL) // Done
+public final class Bridge extends AbstractComponent implements GroupListener<GitZkBridgeNode> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Bridge.class);
     public static final String CONTAINERS_PROPERTIES = "containers.properties";
     public static final String METADATA = ".metadata";
 
+    @Reference(referenceInterface = FabricGitService.class)
+    private final ValidatingReference<FabricGitService> gitService = new ValidatingReference<FabricGitService>();
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private GitService gitService;
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private CuratorFramework curator;
-    private Group<GitZkBridgeNode> group;
+    private final ScheduledExecutorService executors = Executors.newSingleThreadScheduledExecutor();;
 
-    private long period = 1000;
-    private ScheduledExecutorService executors;
-
+    @GuardedBy("volatile") private volatile Group<GitZkBridgeNode> group;
+    @GuardedBy("volatile") private volatile long period = 1000;
 
     @Activate
-    public void init(Map<String, String> properties) {
-        this.period = Integer.parseInt(properties != null && properties.containsKey("period") ? properties.get("period") : "1000");
-        this.executors = Executors.newSingleThreadScheduledExecutor();
-        group = new ZooKeeperGroup<GitZkBridgeNode>(curator, "/fabric/registry/clusters/gitzkbridge", GitZkBridgeNode.class);
+    void activate(ComponentContext context, Map<String, String> properties) {
+        period = Integer.parseInt(properties != null && properties.containsKey("period") ? properties.get("period") : "1000");
+        group = new ZooKeeperGroup<GitZkBridgeNode>(curator.get(), "/fabric/registry/clusters/gitzkbridge", GitZkBridgeNode.class);
         group.add(this);
         group.update(createState());
         group.start();
@@ -105,12 +107,12 @@ public class Bridge implements GroupListener<GitZkBridgeNode> {
             public void run() {
                 try {
                         String login = getContainerLogin();
-                        String token = generateContainerToken(curator);
+                        String token = generateContainerToken(curator.get());
                         CredentialsProvider cp = new UsernamePasswordCredentialsProvider(login, token);
                         if (group.isMaster()) {
-                            update(gitService.get(), curator, cp);
+                            update(gitService.get().get(), curator.get(), cp);
                         } else {
-                            updateLocal(gitService.get(), curator, cp);
+                            updateLocal(gitService.get().get(), curator.get(), cp);
                         }
                 } catch (Exception e) {
                     if (LOGGER.isDebugEnabled()) {
@@ -121,12 +123,13 @@ public class Bridge implements GroupListener<GitZkBridgeNode> {
                 }
             }
         }, period, period, TimeUnit.MILLISECONDS);
+        activateComponent();
     }
 
     @Deactivate
-    public void destroy() {
-        executors.shutdown();
-        try {
+    void deactivate() {
+        deactivateComponent();
+             try {
             if (group != null) {
                 group.close();
             }
@@ -135,40 +138,34 @@ public class Bridge implements GroupListener<GitZkBridgeNode> {
         }
     }
 
-
-    public synchronized void bindGitService(GitService gitService) {
-        this.gitService = gitService;
-    }
-
-    public synchronized void unbindGitService(GitService gitService) {
-        this.gitService = null;
-    }
-
     @Override
     public void groupEvent(Group<GitZkBridgeNode> group, GroupEvent event) {
-        if (group.isMaster()) {
-            LOGGER.info("Git/zk bridge is active");
-        } else {
-            LOGGER.info("Git/zk bridge is inactive");
-        }
-        try {
-            group.update(createState());
-        } catch (IllegalStateException e) {
-            // Ignore
+        if (isValid()) {
+            if (group.isMaster()) {
+                LOGGER.info("Git/zk bridge is active");
+            } else {
+                LOGGER.info("Git/zk bridge is inactive");
+            }
+            try {
+                group.update(createState());
+            } catch (IllegalStateException e) {
+                // Ignore
+            }
         }
     }
 
-    GitZkBridgeNode createState() {
+    static void update(Git git, CuratorFramework zookeeper) throws Exception {
+        update(git, zookeeper, null);
+    }
+
+    private GitZkBridgeNode createState() {
         GitZkBridgeNode state = new GitZkBridgeNode();
         state.setId("bridge");
         state.setContainer(System.getProperty("karaf.name"));
         return state;
     }
 
-
-
-
-    public static void updateLocal(Git git, CuratorFramework zookeeper, CredentialsProvider credentialsProvider) throws Exception {
+    private void updateLocal(Git git, CuratorFramework zookeeper, CredentialsProvider credentialsProvider) throws Exception {
         String remoteName = "origin";
 
         try {
@@ -222,11 +219,7 @@ public class Bridge implements GroupListener<GitZkBridgeNode> {
         }
     }
 
-    public static void update(Git git, CuratorFramework zookeeper) throws Exception {
-        update(git, zookeeper, null);
-    }
-
-    public static void update(Git git, CuratorFramework zookeeper, CredentialsProvider credentialsProvider) throws Exception {
+    private static void update(Git git, CuratorFramework zookeeper, CredentialsProvider credentialsProvider) throws Exception {
         String remoteName = "origin";
 
         boolean remoteAvailable = false;
@@ -453,7 +446,7 @@ public class Bridge implements GroupListener<GitZkBridgeNode> {
         git.add().addFilepattern(CONTAINERS_PROPERTIES).call();
     }
 
-    protected static File getGitProfilesDirectory(Git git) {
+    private static File getGitProfilesDirectory(Git git) {
         // TODO allow us to move the profile tree to a sub directory in the git repo
         return git.getRepository().getWorkTree();
     }
@@ -567,11 +560,19 @@ public class Bridge implements GroupListener<GitZkBridgeNode> {
         return os.toByteArray();
     }
 
-    public long getPeriod() {
-        return period;
+    void bindGitService(FabricGitService service) {
+        this.gitService.set(service);
     }
 
-    public void setPeriod(long period) {
-        this.period = period;
+    void unbindGitService(FabricGitService service) {
+        this.gitService.set(null);
+    }
+
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
+    }
+
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
     }
 }

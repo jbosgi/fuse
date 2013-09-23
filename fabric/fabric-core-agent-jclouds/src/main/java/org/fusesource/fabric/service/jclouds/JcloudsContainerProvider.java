@@ -17,16 +17,35 @@
 
 package org.fusesource.fabric.service.jclouds;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Strings;
+import static org.fusesource.fabric.internal.ContainerProviderUtils.buildStartScript;
+import static org.fusesource.fabric.internal.ContainerProviderUtils.buildStopScript;
+
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.apache.felix.scr.annotations.ReferencePolicy;
 import org.apache.felix.scr.annotations.Service;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.ContainerProvider;
 import org.fusesource.fabric.api.CreateContainerMetadata;
 import org.fusesource.fabric.api.FabricException;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.internal.ContainerProviderUtils;
 import org.fusesource.fabric.service.jclouds.firewall.FirewallManagerFactory;
 import org.fusesource.fabric.service.jclouds.functions.ToRunScriptOptions;
@@ -46,27 +65,16 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import static org.fusesource.fabric.internal.ContainerProviderUtils.buildStartScript;
-import static org.fusesource.fabric.internal.ContainerProviderUtils.buildStopScript;
+import com.google.common.base.Optional;
+import com.google.common.base.Strings;
 
 /**
  * A concrete {@link org.fusesource.fabric.api.ContainerProvider} that creates {@link org.fusesource.fabric.api.Container}s via jclouds {@link ComputeService}.
  */
-@Component(name = "org.fusesource.fabric.container.provider.jclouds",
-        description = "Fabric Jclouds Container Provider",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.container.provider.jclouds", description = "Fabric Jclouds Container Provider", immediate = true) // Done
 @Service(ContainerProvider.class)
-public class JcloudsContainerProvider implements ContainerProvider<CreateJCloudsContainerOptions, CreateJCloudsContainerMetadata> {
+public class JcloudsContainerProvider extends AbstractComponent implements ContainerProvider<CreateJCloudsContainerOptions, CreateJCloudsContainerMetadata> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JcloudsContainerProvider.class);
 
@@ -77,32 +85,38 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
 
     private static final String SCHEME = "jclouds";
 
-    @Reference
-    private ComputeRegistry computeRegistry;
-    @Reference
-    private FirewallManagerFactory firewallManagerFactory;
-    @Reference
-    private CredentialStore credentialStore;
-    @Reference
-    private ConfigurationAdmin configurationAdmin;
-    @Reference
-    private CuratorFramework curator;
-    private BundleContext bundleContext;
+    @Reference(cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, bind = "bindComputeService", unbind = "unbindComputeService", referenceInterface = ComputeService.class, policy = ReferencePolicy.DYNAMIC)
+    private final ConcurrentMap<String, ComputeService> computeServiceMap = new ConcurrentHashMap<String, ComputeService>();
 
-    private ExecutorService executorService = Executors.newCachedThreadPool();
+    @Reference(referenceInterface = ComputeRegistry.class)
+    private final ValidatingReference<ComputeRegistry> computeRegistry = new ValidatingReference<ComputeRegistry>();
+    @Reference(referenceInterface = FirewallManagerFactory.class)
+    private final ValidatingReference<FirewallManagerFactory> firewallManagerFactory = new ValidatingReference<FirewallManagerFactory>();
+    @Reference(referenceInterface = CredentialStore.class)
+    private final ValidatingReference<CredentialStore> credentialStore = new ValidatingReference<CredentialStore>();
+    @Reference(referenceInterface = ConfigurationAdmin.class)
+    private final ValidatingReference<ConfigurationAdmin> configAdmin = new ValidatingReference<ConfigurationAdmin>();
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
+
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    @GuardedBy("volatile & assertValid()") private volatile BundleContext bundleContext;
 
     @Activate
-    public void init(BundleContext bundleContext) {
+    void activate(BundleContext bundleContext) {
         this.bundleContext = bundleContext;
+        activateComponent();
     }
 
     @Deactivate
-    public void destroy() {
+    void deactivate() {
+        deactivateComponent();
         executorService.shutdown();
     }
 
-
+    @Override
     public Set<CreateJCloudsContainerMetadata> create(CreateJCloudsContainerOptions input) throws MalformedURLException, RunNodesException, URISyntaxException, InterruptedException {
+        assertValid();
         Set<? extends NodeMetadata> metadata = null;
         CreateJCloudsContainerOptions options = input.updateComputeService(getOrCreateComputeService(input));
         int number = Math.max(options.getNumber(), 1);
@@ -152,7 +166,7 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
                     containerName = originalName;
                 }
                 CloudContainerInstallationTask installationTask = new CloudContainerInstallationTask(containerName,
-                        nodeMetadata, options, computeService, firewallManagerFactory, template.getOptions(), result,
+                        nodeMetadata, options, computeService, firewallManagerFactory.get(), template.getOptions(), result,
                         countDownLatch);
                 executorService.execute(installationTask);
             }
@@ -174,6 +188,7 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
 
     @Override
     public void start(Container container) {
+        assertValid();
         CreateContainerMetadata metadata = container.getMetadata();
         if (!(metadata instanceof CreateJCloudsContainerMetadata)) {
             throw new IllegalStateException("Container doesn't have valid create container metadata type");
@@ -207,6 +222,7 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
 
     @Override
     public void stop(Container container) {
+        assertValid();
         CreateContainerMetadata metadata = container.getMetadata();
         if (!(metadata instanceof CreateJCloudsContainerMetadata)) {
             throw new IllegalStateException("Container doesn't have valid create container metadata type");
@@ -239,6 +255,7 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
 
     @Override
     public void destroy(Container container) {
+        assertValid();
         CreateContainerMetadata metadata = container.getMetadata();
         if (!(metadata instanceof CreateJCloudsContainerMetadata)) {
             throw new IllegalStateException("Container doesn't have valid create container metadata type");
@@ -253,9 +270,6 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
 
     /**
      * Gets an existing {@link ComputeService} that matches configuration or creates a new one.
-     *
-     * @param options
-     * @return
      */
     private synchronized ComputeService getOrCreateComputeService(CreateJCloudsContainerOptions options) {
         ComputeService computeService = null;
@@ -265,7 +279,7 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
                 computeService = (ComputeService) object;
             }
             if (computeService == null && options.getContextName() != null) {
-                computeService = computeRegistry.getIfPresent(options.getContextName());
+                computeService = computeRegistry.get().getIfPresent(options.getContextName());
             }
             if (computeService == null) {
                 options.getCreationStateListener().onStateChange("Compute Service not found. Creating ...");
@@ -277,9 +291,9 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
                 Map<String, String> serviceOptions = options.getServiceOptions();
                 try {
                     if (options.getProviderName() != null) {
-                        CloudUtils.registerProvider(curator, configurationAdmin, options.getContextName(), options.getProviderName(), options.getIdentity(), options.getCredential(), serviceOptions);
+                        CloudUtils.registerProvider(curator.get(), configAdmin.get(), options.getContextName(), options.getProviderName(), options.getIdentity(), options.getCredential(), serviceOptions);
                     } else if (options.getApiName() != null) {
-                        CloudUtils.registerApi(curator, configurationAdmin, options.getContextName(), options.getApiName(), options.getEndpoint(), options.getIdentity(), options.getCredential(), serviceOptions);
+                        CloudUtils.registerApi(curator.get(), configAdmin.get(), options.getContextName(), options.getApiName(), options.getEndpoint(), options.getIdentity(), options.getCredential(), serviceOptions);
                     }
                     computeService = CloudUtils.waitForComputeService(bundleContext, options.getContextName());
                 } catch (Exception e) {
@@ -305,43 +319,57 @@ public class JcloudsContainerProvider implements ContainerProvider<CreateJClouds
         return CreateJCloudsContainerMetadata.class;
     }
 
-    public FirewallManagerFactory getFirewallManagerFactory() {
-        return firewallManagerFactory;
+    void bindCredentialStore(CredentialStore credentialStore) {
+        this.credentialStore.set(credentialStore);
     }
 
-    public void setFirewallManagerFactory(FirewallManagerFactory firewallManagerFactory) {
-        this.firewallManagerFactory = firewallManagerFactory;
+    void unbindCredentialStore(CredentialStore credentialStore) {
+        this.credentialStore.set(null);
     }
 
-    public CredentialStore getCredentialStore() {
-        return credentialStore;
+    void bindComputeRegistry(ComputeRegistry service) {
+        this.computeRegistry.set(service);
     }
 
-    public void setCredentialStore(CredentialStore credentialStore) {
-        this.credentialStore = credentialStore;
+    void unbindComputeRegistry(ComputeRegistry service) {
+        this.computeRegistry.set(null);
     }
 
-    public ConfigurationAdmin getConfigurationAdmin() {
-        return configurationAdmin;
+    void bindConfigAdmin(ConfigurationAdmin service) {
+        this.configAdmin.set(service);
     }
 
-    public void setConfigurationAdmin(ConfigurationAdmin configurationAdmin) {
-        this.configurationAdmin = configurationAdmin;
+    void unbindConfigAdmin(ConfigurationAdmin service) {
+        this.configAdmin.set(null);
     }
 
-    public CuratorFramework getCurator() {
-        return curator;
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
     }
 
-    public void setCurator(CuratorFramework curator) {
-        this.curator = curator;
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
     }
 
-    public BundleContext getBundleContext() {
-        return bundleContext;
+    void bindFirewallManagerFactory(FirewallManagerFactory factory) {
+        this.firewallManagerFactory.set(factory);
     }
 
-    public void setBundleContext(BundleContext bundleContext) {
-        this.bundleContext = bundleContext;
+    void unbindFirewallManagerFactory(FirewallManagerFactory factory) {
+        this.firewallManagerFactory.set(null);
+    }
+
+    void bindComputeService(ComputeService computeService) {
+        String name = computeService.getContext().unwrap().getName();
+        if (name != null) {
+            computeServiceMap.put(name, computeService);
+        }
+    }
+
+    void unbindComputeService(ComputeService computeService) {
+        String serviceId = computeService.getContext().unwrap().getName();
+        if (serviceId != null) {
+            computeServiceMap.remove(serviceId);
+        }
     }
 }

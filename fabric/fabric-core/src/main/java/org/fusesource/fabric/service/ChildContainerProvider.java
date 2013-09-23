@@ -16,11 +16,20 @@
  */
 package org.fusesource.fabric.service;
 
+import static org.fusesource.fabric.utils.Ports.mapPortToRange;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.karaf.admin.management.AdminServiceMBean;
-import org.apache.zookeeper.KeeperException;
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.ContainerProvider;
 import org.fusesource.fabric.api.CreateChildContainerMetadata;
@@ -30,36 +39,43 @@ import org.fusesource.fabric.api.DataStore;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.PortService;
 import org.fusesource.fabric.api.Profile;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.fusesource.fabric.internal.ContainerImpl;
 import org.fusesource.fabric.utils.AuthenticationUtils;
 import org.fusesource.fabric.utils.Constants;
 import org.fusesource.fabric.utils.Ports;
 import org.fusesource.fabric.zookeeper.ZkDefs;
+import org.osgi.service.component.ComponentContext;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-
-import static org.fusesource.fabric.utils.Ports.mapPortToRange;
-
-@Component(name = "org.fusesource.fabric.container.provider.child",
-           description = "Child Container Provider", immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.container.provider.child", description = "Child Container Provider", immediate = true) // Done
 @Service(ContainerProvider.class)
-public class ChildContainerProvider implements ContainerProvider<CreateChildContainerOptions, CreateChildContainerMetadata> {
+public final class ChildContainerProvider extends AbstractComponent implements ContainerProvider<CreateChildContainerOptions, CreateChildContainerMetadata> {
 
     private static final String SCHEME = "child";
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService service;
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
 
+    @Activate
+    void activate(ComponentContext context) {
+        activateComponent();
+    }
+
+    @Deactivate
+    void deactivate() {
+        deactivateComponent();
+    }
 
     @Override
     public Set<CreateChildContainerMetadata> create(final CreateChildContainerOptions options) throws Exception {
+        assertValid();
+
         final Set<CreateChildContainerMetadata> result = new LinkedHashSet<CreateChildContainerMetadata>();
         final String parentName = options.getParent();
-        final Container parent = service.getContainer(parentName);
+        final Container parent = fabricService.get().getContainer(parentName);
         ContainerTemplate containerTemplate =  new ContainerTemplate(parent, options.getJmxUser(), options.getJmxPassword(), false);
 
         containerTemplate.execute(new ContainerTemplate.AdminServiceCallback<Object>() {
@@ -98,7 +114,7 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
                 }
 
                 Map<String, String> dataStoreProperties = new HashMap<String, String>(options.getDataStoreProperties());
-                dataStoreProperties.put(DataStore.DATASTORE_TYPE_PROPERTY, service.getDataStore().getType());
+                dataStoreProperties.put(DataStore.DATASTORE_TYPE_PROPERTY, fabricService.get().getDataStore().getType());
 
                 for (Map.Entry<String, String> dataStoreEntries : options.getDataStoreProperties().entrySet()) {
                     String key = dataStoreEntries.getKey();
@@ -116,7 +132,7 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
                 //features.addAll(defaultProfile.getFeatures());
                 String originalName = options.getName();
 
-                PortService portService = service.getPortService();
+                PortService portService = fabricService.get().getPortService();
                 Set<Integer> usedPorts = portService.findUsedPortByHost(parent);
 
                 int number = Math.max(options.getNumber(), 1);
@@ -134,12 +150,12 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
                     int minimumPort = parent.getMinimumPort();
                     int maximumPort = parent.getMaximumPort();
 
-                    service.getDataStore().setContainerAttribute(containerName, DataStore.ContainerAttribute.PortMin, String.valueOf(minimumPort));
-                    service.getDataStore().setContainerAttribute(containerName, DataStore.ContainerAttribute.PortMax, String.valueOf(maximumPort));
-                    inheritAddresses(service, parentName, containerName, options);
+                    fabricService.get().getDataStore().setContainerAttribute(containerName, DataStore.ContainerAttribute.PortMin, String.valueOf(minimumPort));
+                    fabricService.get().getDataStore().setContainerAttribute(containerName, DataStore.ContainerAttribute.PortMax, String.valueOf(maximumPort));
+                    inheritAddresses(fabricService.get(), parentName, containerName, options);
 
                     //We are creating a container instance, just for the needs of port registration.
-                    Container child = new ContainerImpl(parent, containerName, service) {
+                    Container child = new ContainerImpl(parent, containerName, fabricService.get()) {
                         @Override
                         public String getIp() {
                             return parent.getIp();
@@ -183,6 +199,7 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
 
     @Override
     public void start(final Container container) {
+        assertValid();
         getContainerTemplateForChild(container).execute(new ContainerTemplate.AdminServiceCallback<Object>() {
             public Object doWithAdminService(AdminServiceMBean adminService) throws Exception {
                 adminService.startInstance(container.getId(), null);
@@ -193,6 +210,7 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
 
     @Override
     public void stop(final Container container) {
+        assertValid();
         getContainerTemplateForChild(container).execute(new ContainerTemplate.AdminServiceCallback<Object>() {
             public Object doWithAdminService(AdminServiceMBean adminService) throws Exception {
                 adminService.stopInstance(container.getId());
@@ -203,6 +221,7 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
 
     @Override
     public void destroy(final Container container) {
+        assertValid();
         getContainerTemplateForChild(container).execute(new ContainerTemplate.AdminServiceCallback<Object>() {
             public Object doWithAdminService(AdminServiceMBean adminService) throws Exception {
                 try {
@@ -236,11 +255,8 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
 
     /**
      * Returns the {@link ContainerTemplate} of the parent of the specified child {@link Container}.
-     *
-     * @param container
-     * @return
      */
-    protected ContainerTemplate getContainerTemplateForChild(Container container) {
+    private ContainerTemplate getContainerTemplateForChild(Container container) {
         CreateChildContainerOptions options = (CreateChildContainerOptions) container.getMetadata().getCreateOptions();
 
         String username = AuthenticationUtils.retrieveJaasUser();
@@ -255,13 +271,6 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
 
     /**
      * Links child container resolver and addresses to its parents resolver and addresses.
-     *
-     * @param service
-     * @param parent
-     * @param name
-     * @param options
-     * @throws KeeperException
-     * @throws InterruptedException
      */
     private void inheritAddresses(FabricService service, String parent, String name, CreateChildContainerOptions options) throws Exception {
         if (options.getManualIp() != null) {
@@ -304,5 +313,13 @@ public class ChildContainerProvider implements ContainerProvider<CreateChildCont
             }
         }
         return sb.toString();
+    }
+
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
+    }
+
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
     }
 }

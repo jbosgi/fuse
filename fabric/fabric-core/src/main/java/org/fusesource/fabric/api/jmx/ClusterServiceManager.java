@@ -1,119 +1,137 @@
 package org.fusesource.fabric.api.jmx;
 
-import org.apache.felix.scr.annotations.*;
-import org.fusesource.fabric.api.CreateEnsembleOptions;
-import org.fusesource.fabric.api.ZooKeeperClusterService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.Map;
 
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import java.util.List;
-import java.util.Map;
+
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.fusesource.fabric.api.CreateEnsembleOptions;
+import org.fusesource.fabric.api.ZooKeeperClusterService;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.osgi.service.component.ComponentContext;
 
 /**
  * @author Stan Lewis
  */
-@Component(description = "Fabric ZooKeeper Cluster Manager JMX MBean")
-public class ClusterServiceManager implements ClusterServiceManagerMBean {
-    private static final transient Logger LOG = LoggerFactory.getLogger(ClusterServiceManager.class);
+@ThreadSafe
+@Component(description = "Fabric ZooKeeper Cluster Manager JMX MBean") // Done
+public final class ClusterServiceManager extends AbstractComponent implements ClusterServiceManagerMBean {
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    private ZooKeeperClusterService service;
-
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY, bind = "bindMBeanServer", unbind = "unbindMBeanServer")
-    private MBeanServer mbeanServer;
-
-    private ObjectName objectName;
-
-    public ObjectName getObjectName() throws MalformedObjectNameException {
-        if (objectName == null) {
-            objectName = new ObjectName("org.fusesource.fabric:type=ClusterServiceManager");
+    private static ObjectName OBJECT_NAME;
+    static {
+        try {
+            OBJECT_NAME = new ObjectName("org.fusesource.fabric:type=ClusterServiceManager");
+        } catch (MalformedObjectNameException e) {
+            // ignore
         }
-        return objectName;
     }
 
-    public void setObjectName(ObjectName objectName) {
-        this.objectName = objectName;
-    }
+    @Reference(referenceInterface = ZooKeeperClusterService.class)
+    private final ValidatingReference<ZooKeeperClusterService> clusterService = new ValidatingReference<ZooKeeperClusterService>();
+    @Reference(referenceInterface = MBeanServer.class, bind = "bindMBeanServer", unbind = "unbindMBeanServer")
+    private final ValidatingReference<MBeanServer> mbeanServer = new ValidatingReference<MBeanServer>();
 
     @Activate
-    public void init() throws Exception {
-        JMXUtils.registerMBean(this, mbeanServer, getObjectName());
+    void activate(ComponentContext context) throws Exception {
+        JMXUtils.registerMBean(this, mbeanServer.get(), OBJECT_NAME);
+        activateComponent();
     }
 
     @Deactivate
-    public void destroy() throws Exception {
-        JMXUtils.unregisterMBean(mbeanServer, getObjectName());
-    }
-
-    public void bindMBeanServer(MBeanServer mbeanServer) {
-        this.mbeanServer = mbeanServer;
-    }
-
-    public void unbindMBeanServer(MBeanServer mbeanServer) {
-            this.mbeanServer = null;
+    void deactivate() throws Exception {
+        deactivateComponent();
+        JMXUtils.unregisterMBean(mbeanServer.get(), OBJECT_NAME);
     }
 
     @Override
     public List<String> getEnsembleContainers() {
-        return service.getEnsembleContainers();
+        assertValid();
+        return clusterService.get().getEnsembleContainers();
     }
 
     @Override
     public String getZooKeeperUrl() {
-        return service.getZooKeeperUrl();
+        assertValid();
+        return clusterService.get().getZooKeeperUrl();
     }
 
     @Override
     public void createCluster(List<String> containers) {
-        service.createCluster(containers);
+        assertValid();
+        clusterService.get().createCluster(containers);
     }
 
     @Override
     public void addToCluster(List<String> containers, Map<String, Object> options) {
+        assertValid();
         CreateEnsembleOptions createEnsembleOptions = ClusterBootstrapManager.getCreateEnsembleOptions(options);
         addToCluster(containers, createEnsembleOptions);
     }
 
     @Override
     public void removeFromCluster(List<String> containers, Map<String, Object> options) {
+        assertValid();
         CreateEnsembleOptions createEnsembleOptions = ClusterBootstrapManager.getCreateEnsembleOptions(options);
         removeFromCluster(containers, createEnsembleOptions);
     }
 
     @Override
     public void createCluster(List<String> containers, CreateEnsembleOptions options) {
-        service.createCluster(containers, options);
+        assertValid();
+        clusterService.get().createCluster(containers, options);
     }
 
     @Override
     public void addToCluster(List<String> containers) {
-        service.addToCluster(containers);
+        assertValid();
+        clusterService.get().addToCluster(containers);
     }
 
     @Override
     public void addToCluster(List<String> containers, CreateEnsembleOptions options) {
-        service.addToCluster(containers, options);
+        assertValid();
+        clusterService.get().addToCluster(containers, options);
     }
 
     @Override
     public void removeFromCluster(List<String> containers) {
-        service.removeFromCluster(containers);
+        assertValid();
+        clusterService.get().removeFromCluster(containers);
     }
 
     @Override
     public void removeFromCluster(List<String> containers, CreateEnsembleOptions options) {
-        service.removeFromCluster(containers, options);
+        assertValid();
+        clusterService.get().removeFromCluster(containers, options);
     }
 
     @Override
     public void clean() {
-        service.clean();
+        assertValid();
+        clusterService.get().clean();
     }
 
-    public ZooKeeperClusterService getService() {
-        return this.service;
+    void bindMBeanServer(MBeanServer mbeanServer) {
+        this.mbeanServer.set(mbeanServer);
+    }
+
+    void unbindMBeanServer(MBeanServer mbeanServer) {
+        this.mbeanServer.set(null);
+    }
+
+    void bindClusterService(ZooKeeperClusterService service) {
+        this.clusterService.set(service);
+    }
+
+    void unbindClusterService(ZooKeeperClusterService service) {
+        this.clusterService.set(null);
     }
 }

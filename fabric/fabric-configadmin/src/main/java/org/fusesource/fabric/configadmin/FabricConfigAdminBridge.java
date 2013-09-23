@@ -23,8 +23,12 @@ import org.apache.felix.scr.annotations.Reference;
 import org.fusesource.fabric.api.ContainerRegistration;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,9 +45,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Component(name = "org.fusesource.fabric.configadmin.bridge",
-           description = "Fabric Config Admin Bridge")
-public class FabricConfigAdminBridge implements Runnable {
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.configadmin.bridge", description = "Fabric Config Admin Bridge") // Done
+public final class FabricConfigAdminBridge extends AbstractComponent implements Runnable {
 
     public static final String FABRIC_ZOOKEEPER_PID = "fabric.zookeeper.pid";
     public static final String AGENT_PID = "org.fusesource.fabric.agent";
@@ -51,23 +55,26 @@ public class FabricConfigAdminBridge implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FabricConfigAdminBridge.class);
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private ConfigurationAdmin configAdmin;
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService fabricService;
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private ContainerRegistration registration;
+    @Reference(referenceInterface = ConfigurationAdmin.class)
+    private final ValidatingReference<ConfigurationAdmin> configAdmin = new ValidatingReference<ConfigurationAdmin>();
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
+    @Reference(referenceInterface = ContainerRegistration.class)
+    private final ValidatingReference<ContainerRegistration> registration = new ValidatingReference<ContainerRegistration>();
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("fabric-configadmin"));
 
     @Activate
-    public void init() {
-        fabricService.trackConfiguration(this);
-        run();
+    synchronized void activate(ComponentContext context) {
+        fabricService.get().trackConfiguration(this);
+        activateComponent();
+        submitUpdateJob();
     }
 
     @Deactivate
-    public void destroy() {
-        fabricService.unTrackConfiguration(this);
+    synchronized void deactivate() {
+        deactivateComponent();
+        fabricService.get().unTrackConfiguration(this);
         executor.shutdown();
         try {
             executor.awaitTermination(1, TimeUnit.MINUTES);
@@ -79,6 +86,12 @@ public class FabricConfigAdminBridge implements Runnable {
 
     @Override
     public void run() {
+        if (isValid()) {
+            submitUpdateJob();
+        }
+    }
+
+    private void submitUpdateJob() {
         executor.submit(new Runnable() {
             @Override
             public void run() {
@@ -87,70 +100,63 @@ public class FabricConfigAdminBridge implements Runnable {
         });
     }
 
-    protected void update() {
-        FabricService fabricService;
-        ConfigurationAdmin configAdmin;
-        synchronized (this) {
-            fabricService = this.fabricService;
-            configAdmin = this.configAdmin;
-        }
-        if (fabricService == null || configAdmin == null) {
-            return;
-        }
-        try {
-            Profile profile = fabricService.getCurrentContainer().getOverlayProfile();
-            final Map<String, Map<String, String>> pidProperties = profile.getConfigurations();
-            List<Configuration> configs = asList(configAdmin.listConfigurations("(" + FABRIC_ZOOKEEPER_PID + "=*)"));
-            for (String pid : pidProperties.keySet()) {
-                Hashtable<String, String> c = new Hashtable<String, String>();
-                c.putAll(pidProperties.get(pid));
-                String p[] = parsePid(pid);
-                //Get the configuration by fabric zookeeper pid, pid and factory pid.
-                Configuration config = getConfiguration(configAdmin, pid, p[0], p[1]);
-                configs.remove(config);
-                Dictionary props = config.getProperties();
-                Hashtable old = props != null ? new Hashtable() : null;
-                if (pid.equals(AGENT_PID)) {
-                    c.put(LAST_MODIFIED, String.valueOf(profile.getLastModified()));
-                }
-                if (old != null) {
-                    for (Enumeration e = props.keys(); e.hasMoreElements(); ) {
-                        Object key = e.nextElement();
-                        Object val = props.get(key);
-                        old.put(key, val);
+    private synchronized void update() {
+        if (isValid()) {
+            try {
+                Profile profile = fabricService.get().getCurrentContainer().getOverlayProfile();
+                final Map<String, Map<String, String>> pidProperties = profile.getConfigurations();
+                List<Configuration> configs = asList(configAdmin.get().listConfigurations("(" + FABRIC_ZOOKEEPER_PID + "=*)"));
+                for (String pid : pidProperties.keySet()) {
+                    Hashtable<String, String> c = new Hashtable<String, String>();
+                    c.putAll(pidProperties.get(pid));
+                    String p[] = parsePid(pid);
+                    //Get the configuration by fabric zookeeper pid, pid and factory pid.
+                    Configuration config = getConfiguration(configAdmin.get(), pid, p[0], p[1]);
+                    configs.remove(config);
+                    Dictionary props = config.getProperties();
+                    Hashtable old = props != null ? new Hashtable() : null;
+                    if (pid.equals(AGENT_PID)) {
+                        c.put(LAST_MODIFIED, String.valueOf(profile.getLastModified()));
                     }
-                    old.remove(FABRIC_ZOOKEEPER_PID);
-                    old.remove(org.osgi.framework.Constants.SERVICE_PID);
-                    old.remove(ConfigurationAdmin.SERVICE_FACTORYPID);
-                }
-                if (!c.equals(old)) {
-                    LOGGER.info("Updating configuration {}", config.getPid());
-                    c.put(FABRIC_ZOOKEEPER_PID, pid);
-                    if (config.getBundleLocation() != null) {
-                        config.setBundleLocation(null);
+                    if (old != null) {
+                        for (Enumeration e = props.keys(); e.hasMoreElements(); ) {
+                            Object key = e.nextElement();
+                            Object val = props.get(key);
+                            old.put(key, val);
+                        }
+                        old.remove(FABRIC_ZOOKEEPER_PID);
+                        old.remove(org.osgi.framework.Constants.SERVICE_PID);
+                        old.remove(ConfigurationAdmin.SERVICE_FACTORYPID);
                     }
-                    config.update(c);
+                    if (!c.equals(old)) {
+                        LOGGER.info("Updating configuration {}", config.getPid());
+                        c.put(FABRIC_ZOOKEEPER_PID, pid);
+                        if (config.getBundleLocation() != null) {
+                            config.setBundleLocation(null);
+                        }
+                        config.update(c);
+                    } else {
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug("Ignoring configuration {} (no changes)", config.getPid());
+                        }
+                    }
+                }
+                for (Configuration config : configs) {
+                    LOGGER.info("Deleting configuration {}", config.getPid());
+                    fabricService.get().getPortService().unregisterPort(fabricService.get().getCurrentContainer(), config.getPid());
+                    config.delete();
+                }
+            } catch (Throwable e) {
+                if (isValid()) {
+                    LOGGER.warn("Exception when tracking configurations. This exception will be ignored.", e);
                 } else {
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Ignoring configuration {} (no changes)", config.getPid());
-                    }
+                    LOGGER.debug("Exception when tracking configurations. This exception will be ignored because services have been unbound in the mean time.", e);
                 }
-            }
-            for (Configuration config : configs) {
-                LOGGER.info("Deleting configuration {}", config.getPid());
-                fabricService.getPortService().unRegisterPort(fabricService.getCurrentContainer(), config.getPid());
-                config.delete();
-            }
-        } catch (Throwable e) {
-            if (this.fabricService == fabricService && this.configAdmin == configAdmin) {
-                LOGGER.warn("Exception when tracking configurations. This exception will be ignored.", e);
-            } else {
-                LOGGER.debug("Exception when tracking configurations. This exception will be ignored because services have been unbound in the mean time.", e);
             }
         }
     }
 
-    <T> List<T> asList(T... a) {
+    private <T> List<T> asList(T... a) {
         List<T> l = new ArrayList<T>();
         if (a != null) {
             Collections.addAll(l, a);
@@ -164,7 +170,7 @@ public class FabricConfigAdminBridge implements Runnable {
      * @param pid The pid to parse.
      * @return An arrays which contains the pid[0] the pid and pid[1] the factory pid if applicable.
      */
-    String[] parsePid(String pid) {
+    private String[] parsePid(String pid) {
         int n = pid.indexOf('-');
         if (n > 0) {
             String factoryPid = pid.substring(n + 1);
@@ -175,7 +181,7 @@ public class FabricConfigAdminBridge implements Runnable {
         }
     }
 
-    Configuration getConfiguration(ConfigurationAdmin configAdmin, String zooKeeperPid, String pid, String factoryPid) throws Exception {
+    private Configuration getConfiguration(ConfigurationAdmin configAdmin, String zooKeeperPid, String pid, String factoryPid) throws Exception {
         String filter = "(" + FABRIC_ZOOKEEPER_PID + "=" + zooKeeperPid + ")";
         Configuration[] oldConfiguration = configAdmin.listConfigurations(filter);
         if (oldConfiguration != null && oldConfiguration.length > 0) {
@@ -191,7 +197,31 @@ public class FabricConfigAdminBridge implements Runnable {
         }
     }
 
-    static class NamedThreadFactory implements ThreadFactory {
+    void bindConfigAdmin(ConfigurationAdmin service) {
+        this.configAdmin.set(service);
+    }
+
+    void unbindConfigAdmin(ConfigurationAdmin service) {
+        this.configAdmin.set(null);
+    }
+
+    void bindRegistration(ContainerRegistration service) {
+        this.registration.set(service);
+    }
+
+    void unbindRegistration(ContainerRegistration service) {
+        this.registration.set(null);
+    }
+
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
+    }
+
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
+    }
+
+    private static class NamedThreadFactory implements ThreadFactory {
         private static final AtomicInteger poolNumber = new AtomicInteger(1);
         private final ThreadGroup group;
         private final AtomicInteger threadNumber = new AtomicInteger(1);

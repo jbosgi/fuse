@@ -26,6 +26,10 @@ import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.api.Version;
+import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.scr.AbstractComponent;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,36 +38,34 @@ import static org.fusesource.fabric.utils.features.FeatureUtils.search;
 /**
  * A FeaturesService implementation for Fabric managed containers.
  */
-@Component(name = "org.fusesource.fabric.features",
-           description = "Fabric Features Service", immediate = true)
+@Component(name = "org.fusesource.fabric.features", description = "Fabric Features Service", immediate = true) // Done
 @Service(FeaturesService.class)
-public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
+public final class FabricFeaturesServiceImpl extends AbstractComponent implements FeaturesService, Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FeaturesService.class);
 
-    @Reference(cardinality = org.apache.felix.scr.annotations.ReferenceCardinality.MANDATORY_UNARY)
-    private FabricService fabricService;
+    @Reference(referenceInterface = FabricService.class)
+    private final ValidatingReference<FabricService> fabricService = new ValidatingReference<FabricService>();
 
-    private final Set<Repository> repositories = new HashSet<Repository>();
-    private final Set<Feature> allfeatures = new HashSet<Feature>();
-    private final Set<Feature> installed = new HashSet<Feature>();
+    @GuardedBy("this") private final Set<Repository> repositories = new HashSet<Repository>();
+    @GuardedBy("this") private final Set<Feature> allfeatures = new HashSet<Feature>();
+    @GuardedBy("this") private final Set<Feature> installed = new HashSet<Feature>();
 
     @Activate
-    public void activate() {
-        fabricService.trackConfiguration(this);
+    void activate(ComponentContext context) {
+        fabricService.get().trackConfiguration(this);
+        activateComponent();
     }
 
     @Deactivate
-    public void deactivate() {
-        fabricService.unTrackConfiguration(this);
-    }
-
-    public FabricService getFabricService() {
-        return fabricService;
+    void deactivate() {
+        deactivateComponent();
+        fabricService.get().unTrackConfiguration(this);
     }
 
     @Override
-    public void run() {
+    public synchronized void run() {
+        assertValid();
         repositories.clear();
         allfeatures.clear();
         installed.clear();
@@ -71,26 +73,35 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     @Override
     public void validateRepository(URI uri) throws Exception {
+        assertValid();
         FeatureValidationUtil.validate(uri);
     }
 
     @Override
     public void addRepository(URI uri) throws Exception {
-        addRepository(uri, true);
+        unsupportedAddRepository(uri);
     }
 
     @Override
     public void addRepository(URI uri, boolean b) throws Exception {
+        unsupportedAddRepository(uri);
+    }
+
+    private void unsupportedAddRepository(URI uri) {
         throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --repositories %s target-profile instead. See fabric:profile-edit --help for more information.", uri.toString()));
     }
 
     @Override
     public void removeRepository(URI uri) throws Exception {
-        removeRepository(uri, true);
+        unsupportedRemoveRepository(uri);
     }
 
     @Override
     public void removeRepository(URI uri, boolean b) throws Exception {
+        unsupportedRemoveRepository(uri);
+    }
+
+    private void unsupportedRemoveRepository(URI uri) {
         throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --delete --repositories %s target-profile instead. See fabric:profile-edit --help for more information.", uri.toString()));
     }
 
@@ -100,14 +111,13 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     /**
      * Lists all {@link Repository} entries found in any {@link Profile} of the current {@link Container} {@link Version}.
-     *
-     * @return
      */
     @Override
     public synchronized Repository[] listRepositories() {
-        if (repositories.isEmpty() && fabricService != null) {
+        assertValid();
+        if (repositories.isEmpty()) {
             Set<String> repositoryUris = new LinkedHashSet<String>();
-            Container container = fabricService.getCurrentContainer();
+            Container container = fabricService.get().getCurrentContainer();
             Version version = container.getVersion();
             Profile[] profiles = version.getProfiles();
             if (profiles != null) {
@@ -138,17 +148,21 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     @Override
     public void installFeature(String s) throws Exception {
-        installFeature(s, (EnumSet) null);
+        unsupportedInstallFeature(s);
     }
 
     @Override
     public void installFeature(String s, EnumSet<Option> options) throws Exception {
-        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --features %s target-profile instead. See fabric:profile-edit --help for more information.", s));
+        unsupportedInstallFeature(s);
     }
 
     @Override
     public void installFeature(String s, String s2) throws Exception {
-        installFeature(s, s2, null);
+        String featureName = s;
+        if (s2 != null && s2.equals("0.0.0")) {
+            featureName = s + "/" + s2;
+        }
+        unsupportedInstallFeature(featureName);
     }
 
     @Override
@@ -157,12 +171,12 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
         if (s2 != null && s2.equals("0.0.0")) {
             featureName = s + "/" + s2;
         }
-        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --features %s target-profile instead. See fabric:profile-edit --help for more information.", featureName));
+        unsupportedInstallFeature(featureName);
     }
 
     @Override
     public void installFeature(Feature feature, EnumSet<Option> options) throws Exception {
-        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --features %s target-profile instead. See fabric:profile-edit --help for more information.", feature.getName()));
+        unsupportedInstallFeature(feature.getName());
     }
 
     @Override
@@ -171,12 +185,16 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
         for (Feature feature : features) {
             sb.append("--feature ").append(feature.getName());
         }
-        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --features %s target-profile instead. See fabric:profile-edit --help for more information.", sb.toString()));
+        unsupportedInstallFeature(sb.toString());
+    }
+
+    private void unsupportedInstallFeature(String s) {
+        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --features %s target-profile instead. See fabric:profile-edit --help for more information.", s));
     }
 
     @Override
     public void uninstallFeature(String s) throws Exception {
-        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --delete --features %s target-profile instead. See fabric:profile-edit --help for more information.", s));
+        unsupportedUninstallFeature(s);
     }
 
     @Override
@@ -185,11 +203,16 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
         if (s2 != null && s2.equals("0.0.0")) {
             featureName = s + "/" + s2;
         }
-        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --features %s target-profile instead. See fabric:profile-edit --help for more information.", featureName));
+        unsupportedUninstallFeature(featureName);
+    }
+
+    private void unsupportedUninstallFeature(String s) {
+        throw new UnsupportedOperationException(String.format("The container is managed by fabric, please use fabric:profile-edit --delete --features %s target-profile instead. See fabric:profile-edit --help for more information.", s));
     }
 
     @Override
     public synchronized Feature[] listFeatures() throws Exception {
+        assertValid();
         if (allfeatures.isEmpty()) {
             Repository[] repositories = listRepositories();
             for (Repository repository : repositories) {
@@ -209,10 +232,11 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     @Override
     public synchronized Feature[] listInstalledFeatures() {
-        if (installed.isEmpty() && fabricService != null) {
+        assertValid();
+        if (installed.isEmpty()) {
             try {
                 Map<String, Map<String, Feature>> allFeatures = getFeatures(listProfileRepositories());
-                Container container = fabricService.getCurrentContainer();
+                Container container = fabricService.get().getCurrentContainer();
                 Profile[] profiles = container.getProfiles();
 
                 if (profiles != null) {
@@ -247,6 +271,7 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     @Override
     public synchronized boolean isInstalled(Feature feature) {
+        assertValid();
         if (installed.isEmpty()) {
             listInstalledFeatures();
         }
@@ -255,6 +280,7 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     @Override
     public Feature getFeature(String name) throws Exception {
+        assertValid();
         Feature[] features = listFeatures();
         for (Feature feature : features) {
             if (name.equals(feature.getName())) {
@@ -266,6 +292,7 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     @Override
     public Feature getFeature(String name, String version) throws Exception {
+        assertValid();
         Feature[] features = listFeatures();
         for (Feature feature : features) {
             if (name.equals(feature.getName()) && version.equals(feature.getVersion())) {
@@ -276,11 +303,7 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
     }
 
 
-    protected Map<String, Map<String, Feature>> getFeatures() throws Exception {
-        return getFeatures(listRepositories());
-    }
-
-    protected Map<String, Map<String, Feature>> getFeatures(Repository[] repositories) throws Exception {
+    private Map<String, Map<String, Feature>> getFeatures(Repository[] repositories) throws Exception {
         Map<String, Map<String, Feature>> features = new HashMap<String, Map<String, Feature>>();
         for (Repository repo : repositories) {
             try {
@@ -303,14 +326,12 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     /**
      * Lists all {@link Repository} enties found in the {@link Profile}s assigned to the current {@link Container}.
-     *
-     * @return
      */
     private Repository[] listProfileRepositories() {
         Set<String> repositoryUris = new LinkedHashSet<String>();
         Set<Repository> repositories = new LinkedHashSet<Repository>();
         //The method is only called when fabricService is available so no need to guard for null values.
-        Container container = fabricService.getCurrentContainer();
+        Container container = fabricService.get().getCurrentContainer();
         Set<Profile> profilesWithParents = new HashSet<Profile>();
 
         Profile[] profiles = container.getProfiles();
@@ -341,11 +362,8 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     /**
      * Adds the {@link URI} of {@link Feature} {@link Repository} and its internals to the set of repositories {@link URI}s.
-     *
-     * @param uri
-     * @param repositoryUris
      */
-    protected void addRepositoryUri(String uri, Set<String> repositoryUris) {
+    private void addRepositoryUri(String uri, Set<String> repositoryUris) {
         if (repositoryUris.contains(uri)) {
             return;
         }
@@ -366,11 +384,8 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     /**
      * Adds {@link Profile} and its parents to the set of {@link Profile}s.
-     *
-     * @param profile
-     * @param profiles
      */
-    protected void addProfiles(Profile profile, Set<Profile> profiles) {
+    private void addProfiles(Profile profile, Set<Profile> profiles) {
         if (profiles.contains(profile)) {
             return;
         }
@@ -383,11 +398,8 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
 
     /**
      * Adds {@link Feature} and its dependencies to the set of {@link Feature}s.
-     *
-     * @param feature
-     * @param features
      */
-    protected void addFeatures(Feature feature, Set<Feature> features) {
+    private void addFeatures(Feature feature, Set<Feature> features) {
         if (features.contains(feature)) {
             return;
         }
@@ -398,4 +410,11 @@ public class FabricFeaturesServiceImpl implements FeaturesService, Runnable {
         }
     }
 
+    void bindFabricService(FabricService fabricService) {
+        this.fabricService.set(fabricService);
+    }
+
+    void unbindFabricService(FabricService fabricService) {
+        this.fabricService.set(null);
+    }
 }

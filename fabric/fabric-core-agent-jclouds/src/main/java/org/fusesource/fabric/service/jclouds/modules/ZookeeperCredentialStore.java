@@ -19,6 +19,7 @@ package org.fusesource.fabric.service.jclouds.modules;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
@@ -27,11 +28,16 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
+import org.fusesource.fabric.api.scr.Validatable;
+import org.fusesource.fabric.api.scr.ValidatingReference;
+import org.fusesource.fabric.api.scr.ValidationSupport;
 import org.fusesource.fabric.zookeeper.ZkPath;
 import org.jclouds.domain.Credentials;
 import org.jclouds.domain.LoginCredentials;
 import org.jclouds.karaf.core.CredentialStore;
 import org.jclouds.rest.ConfiguresCredentialStore;
+import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,79 +59,109 @@ import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setData;
  * This module supports up to 100 node credential store in memory.
  * Credentials stored in memory will be pushed to Zookeeper when it becomes available.
  */
-@Component(name = "org.fusesource.fabric.jclouds.credentialstore.zookeeper",
-        description = "Fabric Jclouds ZooKeeper Credential Store",
-        immediate = true)
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.jclouds.credential.store.zookeeper", description = "Fabric Jclouds ZooKeeper Credential Store", immediate = true) // Done
 @Service({CredentialStore.class, ConnectionStateListener.class})
 @ConfiguresCredentialStore
-public class ZookeeperCredentialStore extends CredentialStore implements ConnectionStateListener {
+public final class ZookeeperCredentialStore extends CredentialStore implements ConnectionStateListener, Validatable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperCredentialStore.class);
 
-    @Reference
-    private CuratorFramework curator;
-    private Cache<String, Credentials> cache;
+    @Reference(referenceInterface = CuratorFramework.class)
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
+
+    // No synchronization needed, both of these are thread safe
+    private final Cache<String, Credentials> cache = CacheBuilder.newBuilder().maximumSize(100).build();
+    private final ValidationSupport active = new ValidationSupport();
+
+    // Needed for thread safe access to the underlying {@link CredentialStore}
+    private final Object storeLock = new Object();
 
     @Activate
-    public void init() {
-        this.cache = CacheBuilder.newBuilder().maximumSize(100).build();
-        this.store = new ZookeeperBacking(curator, cache);
+    void activate(ComponentContext context) {
+        setStore(new ZookeeperBacking(curator.get(), cache));
+        active.setValid();
     }
 
     @Deactivate
-    public void destroy() {
-        this.cache.cleanUp();
-        this.cache = null;
+    void deactivate() {
+        active.setInvalid();
+        cache.cleanUp();
+    }
+
+    @Override
+    public boolean isValid() {
+        return active.isValid();
+    }
+
+    @Override
+    public void assertValid() {
+        active.assertValid();
     }
 
     /**
-     * Configures a {@link com.google.inject.Binder} via the exposed methods.
+     * The underlying credential store is not thread safe
+     * Use this accessor instead of the protected 'store' field
      */
     @Override
-    protected void configure() {
+    public Map<String, Credentials> getStore() {
+        synchronized (storeLock) {
+            return super.getStore();
+        }
     }
 
-
-    public CuratorFramework getCurator() {
-        return curator;
-    }
-
-    public void setCurator(CuratorFramework curator) {
-        this.curator = curator;
+    /**
+     * The underlying credential store is not thread safe
+     * Use this accessor instead of the protected 'store' field
+     */
+    @Override
+    public void setStore(Map<String, Credentials> store) {
+        synchronized (storeLock) {
+            super.setStore(store);
+        }
     }
 
     @Override
     public void stateChanged(CuratorFramework client, ConnectionState newState) {
-        switch (newState) {
+        if (isValid()) {
+            switch (newState) {
             case CONNECTED:
             case RECONNECTED:
-                this.curator = client;
+                this.curator.set(client);
                 onConnected();
                 break;
             default:
                 onDisconnected();
         }
+        }
     }
 
-
-    public void onConnected() {
+    private void onConnected() {
         //Whenever a connection to Zookeeper is made copy everything to Zookeeper.
         for (Map.Entry<String, Credentials> entry : cache.asMap().entrySet()) {
             String s = entry.getKey();
             Credentials credentials = entry.getValue();
-            store.put(s, credentials);
+            getStore().put(s, credentials);
         }
     }
 
-    public void onDisconnected() {
-
+    private void onDisconnected() {
     }
 
+    void bindCurator(CuratorFramework curator) {
+        this.curator.set(curator);
+    }
+
+    void unbindCurator(CuratorFramework curator) {
+        this.curator.set(null);
+    }
 
     /**
-     * A map implementations which uses a local {@link Cache} and Zookeeper as persistent store.
+     * A map implementations which uses a local {@link Cache} and Zookeeper as persistent getStore().
+     * [FIXME] Does not preserve data integrity (i.e. updates on the cache may succeed and fail on the ZK backing store)
      */
-    private class ZookeeperBacking implements Map<String, Credentials> {
+    @ThreadSafe
+    private static final class ZookeeperBacking implements Map<String, Credentials> {
 
         private final CuratorFramework curator;
         private final Cache<String, Credentials> cache;
@@ -136,11 +172,10 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
         }
 
         /**
-         * Returns the size of the store.
+         * Returns the size of the getStore().
          * If zookeeper is connected it returns the size of the zookeeper store, else it falls back to the cache.
-         * @return
          */
-        public int size() {
+        public synchronized int size() {
             int size = 0;
             {
                 try {
@@ -154,16 +189,14 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
             return size;
         }
 
-        public boolean isEmpty() {
+        public synchronized boolean isEmpty() {
             return size() == 0;
         }
 
         /**
          * Checks if {@link Cache} container the key and if not it checks the Zookeeper (if connected).
-         * @param o
-         * @return
          */
-        public boolean containsKey(Object o) {
+        public synchronized boolean containsKey(Object o) {
             boolean result  = cache.asMap().containsKey(o);
             //If not found in the cache check the zookeeper if available.
             if (!result) {
@@ -178,20 +211,16 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
 
         /**
          * Never used, always returns false.
-         * @param o
-         * @return
          */
-        public boolean containsValue(Object o) {
+        public synchronized boolean containsValue(Object o) {
             return false;
         }
 
         /**
          * Gets the {@link Credentials} of the corresponding key from the {@link Cache}.
          * If the {@link Credentials} are not found, then it checks the Zookeeper.
-         * @param o
-         * @return
          */
-        public Credentials get(Object o) {
+        public synchronized Credentials get(Object o) {
             Credentials credentials = cache.asMap().get(o);
             if (credentials == null) {
                 try {
@@ -208,11 +237,8 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
 
         /**
          * Puts {@link Credentials} both in {@link Cache} and the Zookeeper.
-         * @param s
-         * @param credentials
-         * @return
          */
-        public Credentials put(String s, Credentials credentials) {
+        public synchronized Credentials put(String s, Credentials credentials) {
             cache.put(s, credentials);
             try {
                 setData(curator, ZkPath.CLOUD_NODE_IDENTITY.getPath(normalizeKey(s)), credentials.identity);
@@ -225,10 +251,8 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
 
         /**
          * Removes {@link Credentials} for {@link Cache} and Zookeeper.
-         * @param o
-         * @return
          */
-        public Credentials remove(Object o) {
+        public synchronized Credentials remove(Object o) {
             Credentials credentials = cache.asMap().remove(o);
             try {
                 if (credentials == null) {
@@ -247,7 +271,7 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
          * Puts all {@link Map} {@link Entry} to the {@link Cache} and Zookeeper.
          * @param map
          */
-        public void putAll(Map<? extends String, ? extends Credentials> map) {
+        public synchronized void putAll(Map<? extends String, ? extends Credentials> map) {
             for (Map.Entry<? extends String, ? extends Credentials> entry : map.entrySet()) {
                 String s = entry.getKey();
                 Credentials credential = entry.getValue();
@@ -255,7 +279,7 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
             }
         }
 
-        public void clear() {
+        public synchronized void clear() {
             cache.cleanUp();
             try {
                 for (String nodeId : keySet()) {
@@ -269,9 +293,8 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
 
         /**
          * Clears {@link Cache} and Zookeeper from all {@link Credentials}.
-         * @return
          */
-        public Set<String> keySet() {
+        public synchronized Set<String> keySet() {
             Set<String> keys = new HashSet<String>();
                 try {
                     keys = new HashSet<String>(getChildren(curator, ZkPath.CLOUD_NODE.getPath()));
@@ -282,16 +305,15 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
             return keys;
         }
 
-        public Collection<Credentials> values() {
+        public synchronized Collection<Credentials> values() {
             List<Credentials> credentialsList = new LinkedList<Credentials>();
             for (String key : keySet()) {
                 credentialsList.add(get(key));
-
             }
             return credentialsList;
         }
 
-        public Set<Map.Entry<String, Credentials>> entrySet() {
+        public synchronized Set<Map.Entry<String, Credentials>> entrySet() {
             Set<Map.Entry<String, Credentials>> entrySet = new HashSet<Entry<String, Credentials>>();
 
                 for (String key : keySet()) {
@@ -303,8 +325,8 @@ public class ZookeeperCredentialStore extends CredentialStore implements Connect
 
     private static class CredentialsEntry implements Map.Entry<String, Credentials> {
 
-        private String key;
-        private CuratorFramework curator;
+        private final String key;
+        private final CuratorFramework curator;
 
         private CredentialsEntry(CuratorFramework curator, String key) {
             this.curator = curator;
