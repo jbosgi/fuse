@@ -51,7 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.web", description = "Fabric Web Registration Handler", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.web", description = "Fabric Web Registration Handler", immediate = true)
 @Service({ WebListener.class, ServletListener.class, ConnectionStateListener.class })
 public final class FabricWebRegistrationHandler extends AbstractComponent implements WebListener, ServletListener, ConnectionStateListener {
 
@@ -244,19 +244,18 @@ public final class FabricWebRegistrationHandler extends AbstractComponent implem
     }
 
     void bindFabricService(FabricService fabricService) {
-        this.fabricService.set(fabricService);
+        this.fabricService.bind(fabricService);
     }
 
     void unbindFabricService(FabricService fabricService) {
-        this.fabricService.set(null);
+        this.fabricService.unbind(fabricService);
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
-
 }

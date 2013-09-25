@@ -78,7 +78,7 @@ import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setData;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setPropertiesAsMap;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.git.zkbridge", description = "Fabric Git / ZooKeeper Bridge", immediate = true, policy = ConfigurationPolicy.OPTIONAL) // Done
+@Component(name = "org.fusesource.fabric.git.zkbridge", description = "Fabric Git / ZooKeeper Bridge", immediate = true, policy = ConfigurationPolicy.OPTIONAL)
 public final class Bridge extends AbstractComponent implements GroupListener<GitZkBridgeNode> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Bridge.class);
@@ -88,7 +88,7 @@ public final class Bridge extends AbstractComponent implements GroupListener<Git
     @Reference(referenceInterface = GitService.class)
     private final ValidatingReference<GitService> gitService = new ValidatingReference<GitService>();
     @Reference(referenceInterface = CuratorFramework.class)
-    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();    
+    private final ValidatingReference<CuratorFramework> curator = new ValidatingReference<CuratorFramework>();
     private final ScheduledExecutorService executors = Executors.newSingleThreadScheduledExecutor();
 
     @GuardedBy("volatile") private volatile Group<GitZkBridgeNode> group;
@@ -560,18 +560,18 @@ public final class Bridge extends AbstractComponent implements GroupListener<Git
     }
 
     void bindGitService(GitService service) {
-        this.gitService.set(service);
+        this.gitService.bind(service);
     }
 
     void unbindGitService(GitService service) {
-        this.gitService.set(null);
+        this.gitService.unbind(service);
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 }

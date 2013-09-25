@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * If for any reason the new ensemble already has registered information for a provider, the provider will be skipped.
  */
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.jclouds.bridge", description = "Fabric Jclouds Service Bridge", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.jclouds.bridge", description = "Fabric Jclouds Service Bridge", immediate = true)
 @Service(ConnectionStateListener.class)
 public final class CloudProviderBridge extends AbstractComponent implements ConnectionStateListener {
 
@@ -84,7 +84,8 @@ public final class CloudProviderBridge extends AbstractComponent implements Conn
             switch (newState) {
             case CONNECTED:
             case RECONNECTED:
-                this.curator.set(client);
+                // FIXME impl calls scr method
+                this.curator.bind(client);
                 onConnected();
                 break;
             default:
@@ -134,18 +135,18 @@ public final class CloudProviderBridge extends AbstractComponent implements Conn
     }
 
     void bindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(service);
+        this.configAdmin.bind(service);
     }
 
     void unbindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(null);
+        this.configAdmin.unbind(service);
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 }

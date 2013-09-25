@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.jaas.zookeeper.backingengine", description = "Fabric Jaas Backing Engine Factory") // Done
+@Component(name = "org.fusesource.fabric.jaas.zookeeper.backingengine", description = "Fabric Jaas Backing Engine Factory")
 @Service(BackingEngineFactory.class)
 public final class ZookeeperBackingEngineFactory extends AbstractComponent implements BackingEngineFactory {
 
@@ -79,10 +79,10 @@ public final class ZookeeperBackingEngineFactory extends AbstractComponent imple
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 }

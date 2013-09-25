@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.partition.balancing.even", description = "Fabric Partition Even Balancing Policy", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.partition.balancing.even", description = "Fabric Partition Even Balancing Policy", immediate = true)
 @Service(BalancingPolicy.class)
 public final class EvenBalancingPolicy extends AbstractComponent implements BalancingPolicy {
 
@@ -105,10 +105,10 @@ public final class EvenBalancingPolicy extends AbstractComponent implements Bala
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 }

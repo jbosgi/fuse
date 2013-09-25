@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.lock.service", description = "Fabric Lock Service") // Done
+@Component(name = "org.fusesource.fabric.lock.service", description = "Fabric Lock Service")
 @Service(LockService.class)
 public final class LockServiceImpl extends AbstractComponent implements LockService {
 
@@ -68,10 +68,10 @@ public final class LockServiceImpl extends AbstractComponent implements LockServ
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 }

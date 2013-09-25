@@ -27,6 +27,7 @@ import org.fusesource.fabric.api.FabricService;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.api.Version;
 import org.fusesource.fabric.api.jcip.GuardedBy;
+import org.fusesource.fabric.api.jcip.ThreadSafe;
 import org.fusesource.fabric.api.scr.AbstractComponent;
 import org.fusesource.fabric.api.scr.ValidatingReference;
 import org.osgi.service.component.ComponentContext;
@@ -38,7 +39,8 @@ import static org.fusesource.fabric.utils.features.FeatureUtils.search;
 /**
  * A FeaturesService implementation for Fabric managed containers.
  */
-@Component(name = "org.fusesource.fabric.features", description = "Fabric Features Service", immediate = true) // Done
+@ThreadSafe
+@Component(name = "org.fusesource.fabric.features", description = "Fabric Features Service", immediate = true)
 @Service(FeaturesService.class)
 public final class FabricFeaturesServiceImpl extends AbstractComponent implements FeaturesService, Runnable {
 
@@ -411,10 +413,10 @@ public final class FabricFeaturesServiceImpl extends AbstractComponent implement
     }
 
     void bindFabricService(FabricService fabricService) {
-        this.fabricService.set(fabricService);
+        this.fabricService.bind(fabricService);
     }
 
     void unbindFabricService(FabricService fabricService) {
-        this.fabricService.set(null);
+        this.fabricService.unbind(fabricService);
     }
 }

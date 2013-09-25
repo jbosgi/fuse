@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.configadmin.bridge", description = "Fabric Config Admin Bridge") // Done
+@Component(name = "org.fusesource.fabric.configadmin.bridge", description = "Fabric Config Admin Bridge")
 public final class FabricConfigAdminBridge extends AbstractComponent implements Runnable {
 
     public static final String FABRIC_ZOOKEEPER_PID = "fabric.zookeeper.pid";
@@ -198,27 +198,27 @@ public final class FabricConfigAdminBridge extends AbstractComponent implements 
     }
 
     void bindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(service);
+        this.configAdmin.bind(service);
     }
 
     void unbindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(null);
+        this.configAdmin.unbind(service);
     }
 
     void bindRegistration(ContainerRegistration service) {
-        this.registration.set(service);
+        this.registration.bind(service);
     }
 
     void unbindRegistration(ContainerRegistration service) {
-        this.registration.set(null);
+        this.registration.unbind(service);
     }
 
     void bindFabricService(FabricService fabricService) {
-        this.fabricService.set(fabricService);
+        this.fabricService.bind(fabricService);
     }
 
     void unbindFabricService(FabricService fabricService) {
-        this.fabricService.set(null);
+        this.fabricService.unbind(fabricService);
     }
 
     private static class NamedThreadFactory implements ThreadFactory {

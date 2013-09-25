@@ -60,7 +60,7 @@ import com.openshift.internal.client.GearProfile;
 import com.openshift.internal.client.StandaloneCartridge;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.container.provider.openshift", description = "Fabric Openshift Container Provider", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.container.provider.openshift", description = "Fabric Openshift Container Provider", immediate = true)
 @Service(ContainerProvider.class)
 public final class OpenshiftContainerProvider extends AbstractComponent implements ContainerProvider<CreateOpenshiftContainerOptions, CreateOpenshiftContainerMetadata>, ContainerAutoScalerFactory {
 
@@ -286,11 +286,11 @@ public final class OpenshiftContainerProvider extends AbstractComponent implemen
     }
 
     void bindOpenShiftConnection(IOpenShiftConnection service) {
-        this.openShiftConnection.set(service);
+        this.openShiftConnection.bind(service);
     }
 
     void unbindOpenShiftConnection(IOpenShiftConnection service) {
-        this.openShiftConnection.set(null);
+        this.openShiftConnection.unbind(service);
     }
 
     /**
@@ -309,10 +309,10 @@ public final class OpenshiftContainerProvider extends AbstractComponent implemen
     }
 
     void bindFabricService(FabricService fabricService) {
-        this.fabricService.set(fabricService);
+        this.fabricService.bind(fabricService);
     }
 
     void unbindFabricService(FabricService fabricService) {
-        this.fabricService.set(null);
+        this.fabricService.unbind(fabricService);
     }
 }

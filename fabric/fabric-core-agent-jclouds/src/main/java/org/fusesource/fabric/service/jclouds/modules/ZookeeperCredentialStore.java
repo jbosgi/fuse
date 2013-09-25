@@ -60,7 +60,7 @@ import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setData;
  * Credentials stored in memory will be pushed to Zookeeper when it becomes available.
  */
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.jclouds.credential.store.zookeeper", description = "Fabric Jclouds ZooKeeper Credential Store", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.jclouds.credential.store.zookeeper", description = "Fabric Jclouds ZooKeeper Credential Store", immediate = true)
 @Service({CredentialStore.class, ConnectionStateListener.class})
 @ConfiguresCredentialStore
 public final class ZookeeperCredentialStore extends CredentialStore implements ConnectionStateListener, Validatable {
@@ -127,7 +127,8 @@ public final class ZookeeperCredentialStore extends CredentialStore implements C
             switch (newState) {
             case CONNECTED:
             case RECONNECTED:
-                this.curator.set(client);
+                // FIXME impl call SCR method
+                this.curator.bind(client);
                 onConnected();
                 break;
             default:
@@ -149,11 +150,11 @@ public final class ZookeeperCredentialStore extends CredentialStore implements C
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 
     /**

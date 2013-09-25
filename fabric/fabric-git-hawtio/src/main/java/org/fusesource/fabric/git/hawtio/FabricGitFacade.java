@@ -49,7 +49,7 @@ import io.hawt.util.Strings;
 import static org.fusesource.fabric.git.internal.GitHelpers.getRootGitDirectory;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.git.hawtio", description = "Fabric Git Hawtio Service", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.git.hawtio", description = "Fabric Git Hawtio Service", immediate = true)
 @Service(GitFacadeMXBean.class)
 public final class FabricGitFacade extends GitFacadeSupport implements Validatable {
 
@@ -284,10 +284,10 @@ public final class FabricGitFacade extends GitFacadeSupport implements Validatab
     }
 
     void bindGitDataStore(GitDataStore gitDataStore) {
-        this.gitDataStore.set(gitDataStore);
+        this.gitDataStore.bind(gitDataStore);
     }
 
     void unbindGitDataStore(GitDataStore gitDataStore) {
-        this.gitDataStore.set(null);
+        this.gitDataStore.unbind(gitDataStore);
     }
 }

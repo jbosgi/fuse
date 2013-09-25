@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setData;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.extender.listener.blueprint", description = "Fabric Blueprint Listener", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.extender.listener.blueprint", description = "Fabric Blueprint Listener", immediate = true)
 @Service(BlueprintListener.class)
 public final class FabricBlueprintBundleListener extends AbstractExtenderListener implements BlueprintListener, Validatable {
 
@@ -99,11 +99,11 @@ public final class FabricBlueprintBundleListener extends AbstractExtenderListene
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 
     private ModuleStatus toModuleStatus(int type) {

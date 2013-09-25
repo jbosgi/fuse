@@ -47,7 +47,7 @@ import org.fusesource.fabric.zookeeper.ZkPath;
 import org.osgi.service.component.ComponentContext;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.portservice.zookeeper", description = "Fabric ZooKeeper Port Service") // Done
+@Component(name = "org.fusesource.fabric.portservice.zookeeper", description = "Fabric ZooKeeper Port Service")
 @Service(PortService.class)
 public final class ZookeeperPortService extends AbstractComponent implements PortService {
 
@@ -289,10 +289,10 @@ public final class ZookeeperPortService extends AbstractComponent implements Por
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 }

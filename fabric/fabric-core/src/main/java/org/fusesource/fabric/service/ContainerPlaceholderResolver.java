@@ -39,7 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.placholder.resolver.container", description = "Fabric Container Placeholder Resolver") // Done
+@Component(name = "org.fusesource.fabric.placholder.resolver.container", description = "Fabric Container Placeholder Resolver")
 @Service(PlaceholderResolver.class)
 public final class ContainerPlaceholderResolver extends AbstractComponent implements PlaceholderResolver {
 
@@ -104,11 +104,11 @@ public final class ContainerPlaceholderResolver extends AbstractComponent implem
     }
 
     void bindFabricService(FabricService fabricService) {
-        this.fabricService.set(fabricService);
+        this.fabricService.bind(fabricService);
     }
 
     void unbindFabricService(FabricService fabricService) {
-        this.fabricService.set(null);
+        this.fabricService.unbind(fabricService);
     }
 }
 

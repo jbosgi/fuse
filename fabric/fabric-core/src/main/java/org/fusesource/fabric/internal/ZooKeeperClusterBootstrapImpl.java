@@ -62,7 +62,7 @@ import static org.fusesource.fabric.utils.Ports.mapPortToRange;
 import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.getStringData;
 
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.zookeeper.cluster.bootstrap", description = "Fabric ZooKeeper Cluster Bootstrap", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.zookeeper.cluster.bootstrap", description = "Fabric ZooKeeper Cluster Bootstrap", immediate = true)
 @Service(ZooKeeperClusterBootstrap.class)
 public final class ZooKeeperClusterBootstrapImpl extends AbstractComponent implements ZooKeeperClusterBootstrap {
 
@@ -336,18 +336,18 @@ public final class ZooKeeperClusterBootstrapImpl extends AbstractComponent imple
     }
 
     void bindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(service);
+        this.configAdmin.bind(service);
     }
 
     void unbindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(null);
+        this.configAdmin.unbind(service);
     }
 
     void bindRegistrationHandler(DataStoreRegistrationHandler service) {
-        this.registrationHandler.set(service);
+        this.registrationHandler.bind(service);
     }
 
     void unbindRegistrationHandler(DataStoreRegistrationHandler service) {
-        this.registrationHandler.set(null);
+        this.registrationHandler.unbind(service);
     }
 }

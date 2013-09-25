@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * cartridges.
  */
 @ThreadSafe
-@Component(name = "org.fusesource.fabric.openshift.agent", description = "Fabric agent for deploying applications into external OpenShift cartridges", immediate = true) // Done
+@Component(name = "org.fusesource.fabric.openshift.agent", description = "Fabric agent for deploying applications into external OpenShift cartridges", immediate = true)
 public final class OpenShiftDeployAgent extends AbstractComponent implements GroupListener<ControllerNode> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenShiftDeployAgent.class);
@@ -288,26 +288,26 @@ public final class OpenShiftDeployAgent extends AbstractComponent implements Gro
     }
 
     void bindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(service);
+        this.configAdmin.bind(service);
     }
 
     void unbindConfigAdmin(ConfigurationAdmin service) {
-        this.configAdmin.set(null);
+        this.configAdmin.unbind(service);
     }
 
     void bindCurator(CuratorFramework curator) {
-        this.curator.set(curator);
+        this.curator.bind(curator);
     }
 
     void unbindCurator(CuratorFramework curator) {
-        this.curator.set(null);
+        this.curator.unbind(curator);
     }
 
     void bindFabricService(FabricService fabricService) {
-        this.fabricService.set(fabricService);
+        this.fabricService.bind(fabricService);
     }
 
     void unbindFabricService(FabricService fabricService) {
-        this.fabricService.set(null);
+        this.fabricService.unbind(fabricService);
     }
 }
