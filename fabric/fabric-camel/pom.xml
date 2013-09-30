@@ -27,8 +27,7 @@
     <artifactId>fabric-camel</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Camel Component</description>
+    <name>Fuse Fabric :: Camel Component</name>
 
     <properties>
         <fuse.osgi.export>
@@ -54,10 +53,6 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
         </dependency>
         <dependency>
             <groupId>org.fusesource.fabric</groupId>

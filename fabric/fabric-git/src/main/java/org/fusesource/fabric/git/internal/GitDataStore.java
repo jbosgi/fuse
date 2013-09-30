@@ -102,12 +102,9 @@ import static org.fusesource.fabric.zookeeper.utils.ZooKeeperUtils.setProperties
         @Reference(referenceInterface = GitService.class, bind = "bindGitService", unbind = "unbindGitService")
 }
 )
-@Service({DataStorePlugin.class, GitDataStore.class})
+@Service(DataStorePlugin.class)
 public class GitDataStore extends AbstractDataStore implements DataStorePlugin<GitDataStore> {
     private static final transient Logger LOG = LoggerFactory.getLogger(GitDataStore.class);
-
-    private static final String PROFILE_ATTRIBUTES_PID = "org.fusesource.fabric.profile.attributes";
-    private static final String CONTAINER_CONFIG_PID = "org.fusesource.fabric.agent";
 
     private static final String MASTER_BRANCH = "master";
     private static final String CONFIG_ROOT_DIR = "fabric";
@@ -151,10 +148,7 @@ public class GitDataStore extends AbstractDataStore implements DataStorePlugin<G
                                 Repository repository = git.getRepository();
                                 StoredConfig config = repository.getConfig();
                                 String currentUrl = config.getString("remote", "origin", "url");
-                                if (actualUrl == null) {
-                                    config.unsetSection("remote", "origin");
-                                    config.save();
-                                } else if (!actualUrl.equals(currentUrl)) {
+                                if (!actualUrl.equals(currentUrl)) {
                                     config.setString("remote", "origin", "url", actualUrl);
                                     config.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
                                     config.save();
@@ -521,34 +515,6 @@ public class GitDataStore extends AbstractDataStore implements DataStorePlugin<G
         } catch (Exception e) {
             throw FabricException.launderThrowable(e);
         }
-    }
-
-
-    @Override
-    public Map<String, String> getProfileAttributes(String version, String profile) {
-        assertValid();
-        // TODO we should probably remove this hack at some point and just let the
-        // ProfileImpl delegate the getParent() mechanism to the DataStore so we don't have to look in 2 files
-        Map<String, String> configuration = getConfiguration(version, profile, PROFILE_ATTRIBUTES_PID);
-        Map<String, String> containerConfiguration = getConfiguration(version, profile, CONTAINER_CONFIG_PID);
-        String parents = containerConfiguration.get("parents");
-        if (parents != null && !parents.isEmpty()) {
-            configuration.put("parents", parents);
-            //configuration.put(p.substring(0, p.lastIndexOf('/')), "parents=" + parents);
-        }
-        return configuration;
-    }
-
-    @Override
-    public void setProfileAttribute(final String version, final String profile, final String key, final String value) {
-        assertValid();
-        Map<String, String> config = getConfiguration(version, profile, PROFILE_ATTRIBUTES_PID);
-        if (value != null) {
-            config.put(key, value);
-        } else {
-            config.remove(key);
-        }
-        setConfiguration(version, profile, PROFILE_ATTRIBUTES_PID, config);
     }
 
     @Override
@@ -1040,7 +1006,8 @@ public class GitDataStore extends AbstractDataStore implements DataStorePlugin<G
             try {
                 git.fetch().setCredentialsProvider(credentialsProvider).setRemote(remote).call();
             } catch (Exception e) {
-                LOG.debug("Fetch failed: " + e, e);
+                LOG.debug("Fetch failed. Ignoring");
+                return;
             }
 
             // Get local and remote branches
@@ -1065,8 +1032,9 @@ public class GitDataStore extends AbstractDataStore implements DataStorePlugin<G
 
             // Check git commmits
             for (String version : gitVersions) {
-                // Delete unneeded local branches
-                if (!remoteBranches.containsKey(version)) {
+                // Delete unneeded local branches.
+                //Check if any remote branches was found as a guard for unwanted deletions.
+                if (!remoteBranches.containsKey(version) && !remoteBranches.isEmpty()) {
                     //We never want to delete the master branch.
                     if (!version.equals(MASTER_BRANCH)) {
                         try {

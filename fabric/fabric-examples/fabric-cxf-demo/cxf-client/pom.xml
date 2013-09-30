@@ -29,8 +29,8 @@
     <groupId>org.fusesource.examples</groupId>
     <artifactId>fabric-cxf-demo-client</artifactId>
     <packaging>bundle</packaging>
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Simple Fabric CXF Demo :: Client</description>
+    
+    <name>Fuse Fabric :: Examples :: CXF Demo :: Client</name>
 
     <properties>
         <felix-plugin.version>2.1.0</felix-plugin.version>
@@ -50,13 +50,6 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>

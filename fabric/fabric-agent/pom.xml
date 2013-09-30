@@ -27,8 +27,7 @@
     <artifactId>fabric-agent</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Provisioning Agent</description>
+    <name>Fuse Fabric :: Provisioning Agent</name>
 
     <properties>
         <fuse.osgi.import>
@@ -360,11 +359,6 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
         </dependency>
 
         <dependency>

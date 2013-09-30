@@ -29,8 +29,7 @@
     <artifactId>process-manager</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Process :: Manager</description>
+    <name>Fuse Process :: Manager</name>
 
     <properties>
 <!--
@@ -91,10 +90,6 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
         </dependency>
         <dependency>
           <groupId>org.fusesource.fabric</groupId>

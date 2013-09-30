@@ -29,8 +29,7 @@
     <packaging>pom</packaging>
     <version>7.3.0.redhat-SNAPSHOT</version>
 
-    <name>${project.artifactId}</name>
-    <description>JBoss Fuse Bill Of Materials (BOM)</description>
+    <name>JBoss Fuse</name>
 
     <url>http://www.jboss.org/products/fuse</url>
 
@@ -166,7 +165,7 @@
         <hadoop-version>1.2.1</hadoop-version>
         <hawtbuf-version>1.9</hawtbuf-version>
         <hawtdispatch-version>1.17</hawtdispatch-version>
-        <hawtio-version>1.2-M-redhat-45</hawtio-version>
+        <hawtio-version>1.2-M-redhat-54</hawtio-version>
         <jackson-version>1.9.10</jackson-version>
         <jasypt-version>1.9.0</jasypt-version>
         <jaxb-api-version>2.1</jaxb-api-version>
@@ -192,7 +191,6 @@
         <karaf-version>2.3.0.redhat-${full-perfectus-build}</karaf-version>
         <libvirt-version>0.4.6</libvirt-version>
         <libvirt-bundle-version>1.1</libvirt-bundle-version>
-        <linkedin-zookeeper-version>1.4.0</linkedin-zookeeper-version>
         <!-- TODO - zap with logback?? -->
         <log4j-version>1.2.16</log4j-version>
         <logback-version>1.0.0</logback-version>
@@ -391,24 +389,6 @@
         </site>
     </distributionManagement>
 
-    <modules>
-        <module>parent</module>
-        <module>common-util</module>
-        <module>insight</module>
-        <module>process</module>
-        <module>components</module>
-        <module>fabric</module>
-        <module>tooling</module>
-        <module>fab</module>
-        <module>patch</module>
-        <module>bai</module>
-        <module>fmc</module>
-        <module>mq</module>
-        <module>stream</module>
-        <module>esb</module>
-        <module>examples</module>
-        <module>security</module>
-    </modules>
 
     <repositories>
         <repository>
@@ -656,12 +636,6 @@
             <dependency>
                 <groupId>org.fusesource.fabric</groupId>
                 <artifactId>fabric-zookeeper</artifactId>
-                <version>${fabric.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.fusesource.fabric</groupId>
-                <artifactId>fabric-linkedin-zookeeper</artifactId>
                 <version>${fabric.version}</version>
                 <scope>provided</scope>
             </dependency>
@@ -941,25 +915,6 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback-version}</version>
-            </dependency>
-            <!-- LinkedIn ZooKeeper -->
-            <dependency>
-                <groupId>org.linkedin</groupId>
-                <artifactId>org.linkedin.zookeeper-impl</artifactId>
-                <version>${linkedin-zookeeper-version}</version>
-                <scope>provided</scope>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.sun.jdmk</groupId>
-                        <artifactId>jmxtools</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.linkedin</groupId>
-                <artifactId>org.linkedin.util-core</artifactId>
-                <version>${linkedin-zookeeper-version}</version>
-                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
@@ -1458,16 +1413,48 @@
         </dependencies>
     </dependencyManagement>
 
-  <profiles>
+    <modules>
+        <module>common-util</module>
+        <module>fab</module>
+        <module>fabric</module>
+        <module>insight</module>
+        <module>mq</module>
+        <module>parent</module>
+        <module>process</module>
+        <module>tooling</module>
+    </modules>
 
-    <profile>
-      <id>distro</id>
-
-      <modules>
-        <module>website</module>
-      </modules>
-    </profile>
-
-  </profiles>
-
+    <profiles>
+        <profile>
+            <id>release</id>
+            <modules>
+                <module>bai</module>
+                <module>components</module>
+                <module>examples</module>
+                <module>fmc</module>
+                <module>security</module>
+                <module>stream</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>esb</id>
+            <modules>
+                <module>esb</module>
+                <module>patch</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>amq</id>
+            <modules>
+                <module>patch</module>
+            </modules>
+        </profile>
+        
+        <profile>
+            <id>distro</id>
+            <modules>
+                <module>website</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

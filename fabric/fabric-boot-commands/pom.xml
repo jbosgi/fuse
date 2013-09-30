@@ -32,8 +32,7 @@
     <artifactId>fabric-boot-commands</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Boot Commands</description>
+    <name>Fuse Fabric :: Boot Commands</name>
 
     <properties>
         <fuse.osgi.export>
@@ -80,10 +79,6 @@
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
         </dependency>
         <dependency>
           <groupId>org.fusesource.fabric</groupId>

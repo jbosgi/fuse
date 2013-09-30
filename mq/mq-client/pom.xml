@@ -28,8 +28,8 @@
     <groupId>org.jboss.amq</groupId>
     <artifactId>mq-client</artifactId>
     <packaging>jar</packaging>
-    <name>JBoss A-MQ Client</name>
-    <description>JBoss A-MQ :: Client</description>
+    
+    <name>JBoss A-MQ :: Client</name>
 
     <dependencies>
       <dependency>
@@ -54,13 +54,6 @@
       <dependency>
           <groupId>org.fusesource.fabric</groupId>
           <artifactId>fabric-zookeeper</artifactId>
-          <version>${fabric.version}</version>
-          <scope>runtime</scope>
-          <optional>true</optional>
-      </dependency>
-      <dependency>
-          <groupId>org.fusesource.fabric</groupId>
-          <artifactId>fabric-linkedin-zookeeper</artifactId>
           <version>${fabric.version}</version>
           <scope>runtime</scope>
           <optional>true</optional>

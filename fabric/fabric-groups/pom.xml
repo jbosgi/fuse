@@ -30,8 +30,7 @@
   <artifactId>fabric-groups</artifactId>
   <packaging>bundle</packaging>
   
-  <name>${project.artifactId}</name>
-  <description>Fuse Fabric :: Cluster Groups API</description>
+  <name>Fuse Fabric :: Cluster Groups API</name>
 
   <properties>
     <fuse.osgi.export>
@@ -44,10 +43,6 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
     </dependency>
-      <dependency>
-          <groupId>org.fusesource.fabric</groupId>
-          <artifactId>fabric-linkedin-zookeeper</artifactId>
-      </dependency>
       <dependency>
           <groupId>org.fusesource.fabric</groupId>
           <artifactId>fabric-zookeeper</artifactId>

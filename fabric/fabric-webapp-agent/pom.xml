@@ -13,6 +13,8 @@
     <artifactId>fabric-webapp-agent</artifactId>
     <packaging>war</packaging>
 
+    <name>[TODO]Fuse Fabric :: Web Agent</name>
+    
     <dependencies>
         <dependency>
             <groupId>org.jolokia</groupId>
@@ -112,13 +114,6 @@
                     <artifactId>org.apache.karaf.admin.management</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
-            <version>${project.version}</version>
-            <scope>runtime</scope>
         </dependency>
 
 <!--

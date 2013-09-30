@@ -28,7 +28,7 @@
   <artifactId>website</artifactId>
   <packaging>war</packaging>
 
-  <name>${project.artifactId}</name>
+  <name>[TODO]${project.artifactId}</name>
   <description>Fuse Stack :: Website and Documentation</description>
 
   <properties>
@@ -165,11 +165,6 @@
           <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-api</artifactId>
-            <version>${project.version}</version>
-          </dependency>
-          <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
             <version>${project.version}</version>
           </dependency>
           <dependency>

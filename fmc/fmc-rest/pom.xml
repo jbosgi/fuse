@@ -25,7 +25,7 @@
 
   <groupId>org.fusesource.fmc</groupId>
   <artifactId>fmc-rest</artifactId>
-  <name>${project.artifactId}</name>
+  <name>[TODO]${project.artifactId}</name>
   <description>FMC :: REST API</description>
   <packaging>war</packaging>
 
@@ -70,13 +70,6 @@
     <dependency>
       <groupId>org.fusesource.fabric</groupId>
       <artifactId>fabric-groups</artifactId>
-      <version>${fabric.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.fusesource.fabric</groupId>
-      <artifactId>fabric-linkedin-zookeeper</artifactId>
       <version>${fabric.version}</version>
       <scope>provided</scope>
     </dependency>
@@ -156,13 +149,6 @@
       <version>${servlet-api-version}</version>
       <scope>provided</scope>
     </dependency>
-
-    <dependency>
-      <groupId>org.linkedin</groupId>
-      <artifactId>org.linkedin.zookeeper-impl</artifactId>
-      <scope>provided</scope>
-    </dependency>
-
     <dependency>
       <groupId>com.sun.jersey</groupId>
       <artifactId>jersey-server</artifactId>

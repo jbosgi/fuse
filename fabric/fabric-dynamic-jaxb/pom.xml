@@ -27,12 +27,12 @@
     <artifactId>fabric-dynamic-jaxb</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Fabric Dynamic JAXB</description>
+    <name>[TODO]Fuse Fabric :: Fabric Dynamic JAXB</name>
 
     <properties>
         <fuse.osgi.export>
             org.fusesource.fabric.jaxb.dynamic.profile*;version=${fuse.osgi.version};-noimport:=true,
+            io.hawt.introspect*;-noimport:=true,
         </fuse.osgi.export>
         <fuse.osgi.import>
             org.fusesource.fabric.jaxb.dynamic;version=${project.version},
@@ -80,6 +80,12 @@
             <artifactId>common-util</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+      <dependency>
+          <groupId>io.hawt</groupId>
+          <artifactId>hawtio-git</artifactId>
+          <version>${hawtio-version}</version>
+      </dependency>
 
         <dependency>
             <groupId>org.fusesource.fabric</groupId>

@@ -28,8 +28,7 @@
   <artifactId>fabric-bridge-itests</artifactId>
   <packaging>jar</packaging>
 
-  <name>${project.artifactId}</name>
-  <description>Fuse Fabric :: ActiveMQ Network Bridge Integration Tests</description>
+  <name>[TODO]Fuse Stream :: Integration Tests</name>
 
   <dependencies>
 
@@ -143,12 +142,6 @@ which would lead to java.lang.RuntimeException: Could not create [service.obr] -
     <dependency>
       <groupId>org.fusesource.fabric</groupId>
       <artifactId>fabric-zookeeper</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.fusesource.fabric</groupId>
-      <artifactId>fabric-linkedin-zookeeper</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>

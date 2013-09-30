@@ -30,8 +30,7 @@
     <artifactId>fabric-git-zkbridge</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: Git :: ZooKeeper Bridge</description>
+    <name>Fuse Fabric :: Git :: ZooKeeper Bridge</name>
 
     <properties>
         <fuse.osgi.export>
@@ -84,13 +83,6 @@
             <artifactId>fabric-zookeeper</artifactId>
             <version>${project.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper-spring</artifactId>

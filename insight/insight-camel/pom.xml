@@ -25,7 +25,7 @@
     </parent>
 
   <artifactId>insight-camel</artifactId>
-  <name>${project.artifactId}</name>
+  <name>[TODO]${project.artifactId}</name>
   <description>Fuse Insight :: Camel</description>
   <packaging>bundle</packaging>
 
@@ -48,10 +48,6 @@
       <dependency>
           <groupId>org.fusesource.fabric</groupId>
           <artifactId>fabric-groups</artifactId>
-      </dependency>
-      <dependency>
-          <groupId>org.fusesource.fabric</groupId>
-          <artifactId>fabric-linkedin-zookeeper</artifactId>
       </dependency>
       <dependency>
           <groupId>org.fusesource.fabric</groupId>

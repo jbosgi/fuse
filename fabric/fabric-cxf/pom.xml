@@ -27,8 +27,7 @@
     <artifactId>fabric-cxf</artifactId>
     <packaging>bundle</packaging>
 
-    <name>${project.artifactId}</name>
-    <description>Fuse Fabric :: CXF Component</description>
+    <name>Fuse Fabric :: CXF Component</name>
 
     <properties>
         <fuse.osgi.export>
@@ -42,12 +41,6 @@
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-zookeeper</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>org.fusesource.fabric</groupId>
-            <artifactId>fabric-linkedin-zookeeper</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.fusesource.fabric</groupId>
             <artifactId>fabric-groups</artifactId>

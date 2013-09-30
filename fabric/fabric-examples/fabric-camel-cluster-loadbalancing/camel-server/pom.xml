@@ -24,7 +24,7 @@
         <version>7.3.0.redhat-SNAPSHOT</version>
     </parent>
 
-    <name>Fuse Fabric :: Example :: Cluster with Fabric Camel :: Server</name>
+    <name>[TODO]Fuse Fabric :: Example :: Cluster with Fabric Camel :: Server</name>
     <packaging>bundle</packaging>
     <groupId>org.fusesource.examples.fabric-camel-cluster</groupId>
     <artifactId>camel-server</artifactId>
@@ -43,10 +43,10 @@
              This is important to make sure that camel-jetty component will be available,
              when we publish the fabric endpoint -->
         <osgi-import-pkg>
-            org.linkedin.zookeeper.client,
+            org.linkedin.org.apache.zookeeper.client,
             org.apache.camel.component.jetty,
             *
-         </osgi-import-pkg>
+        </osgi-import-pkg>
          <osgi-export-pkg />
          <osgi-private-pkg>
          </osgi-private-pkg>

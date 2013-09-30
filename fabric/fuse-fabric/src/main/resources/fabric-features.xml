@@ -118,7 +118,6 @@
         <bundle>mvn:commons-codec/commons-codec/${commons-codec-version}</bundle>
         <bundle>mvn:commons-lang/commons-lang/${commons-lang-version}</bundle>
         <bundle>mvn:com.google.guava/guava/${guava-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric/fabric-linkedin-zookeeper/${project.version}</bundle>
         <bundle>mvn:org.fusesource.fabric/fabric-zookeeper/${project.version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-core-asl/${jackson-version}</bundle>
         <bundle dependency="true">mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
@@ -329,7 +328,7 @@
             jmx.domain=org.elasticsearch
             http.enabled=true
             threadpool.cached.scheduled_size=6
-            #discovery.type=org.elasticsearch.discovery.zookeeper.ZooKeeperDiscoveryModule
+            #discovery.type=org.elasticsearch.discovery.org.apache.zookeeper.ZooKeeperDiscoveryModule
             discovery.zen.ping.multicast.enabled=false
             discovery.zen.ping.unicast.hosts=localhost
         </config>
@@ -437,14 +436,6 @@
         <bundle dependency='true'>mvn:org.codehaus.jackson/jackson-mapper-asl/${jackson-version}</bundle>
         <bundle dependency='true'>mvn:org.codehaus.jackson/jackson-jaxrs/${jackson-version}</bundle>
         <bundle>mvn:org.fusesource.fabric/fabric-hadoop/${project.version}</bundle>
-    </feature>
-
-
-    <feature name='virt' description='FuseSource Virt' version='${project.version}' resolver='(obr)'>
-        <bundle>mvn:org.fusesource.fabric.virt.bundles/org.fusesource.fabric.virt.bundles.jna/${jna-bundle-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric.virt.bundles/org.fusesource.fabric.virt.bundles.libvirt/${libvirt-bundle-version}</bundle>
-        <bundle>mvn:org.fusesource.fabric.virt/org.fusesource.fabric.virt.services/${project.version}</bundle>
-        <bundle>mvn:org.fusesource.fabric.virt/org.fusesource.fabric.virt.commands/${project.version}</bundle>
     </feature>
 
     <feature name="bai" description="Fuse Business Activity Insight" version="${project.version}" resolver="(obr)">
