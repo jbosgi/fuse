@@ -35,7 +35,9 @@
     <module>stream-log</module>
     <module>fabric-bridge</module>
     <module>fabric-bridge-zookeeper</module>
+    <!-- Disable to get perfectus working
     <module>fabric-bridge-itests</module>
+    -->
   </modules>
 
   <build>
