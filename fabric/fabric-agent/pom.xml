@@ -52,6 +52,13 @@
             !org.apache.xerces.*,
             !org.codehaus.classworlds,
             !org.eclipse.osgi.*,
+            !org.apache.commons.codec.binary,
+            !org.fusesource.fabric.internal,
+            !org.fusesource.fabric.maven,
+            !org.sonatype.plexus.components.sec.dispatcher.model,
+            !org.sonatype.plexus.components.sec.dispatcher.model.io.xpp3,
+            !javax.servlet*,
+            !org.osgi.service.http*,
             javax.*,
             org.w3c.*,
             org.xml.sax.*,
@@ -78,7 +85,7 @@
             org.fusesource.fabric.agent.mvn,
             org.fusesource.fabric.agent.download,
             org.fusesource.fabric.agent.utils,
-					  org.fusesource.fabric.agent.sort,
+		    org.fusesource.fabric.agent.sort,
             org.apache.felix.bundlerepository*,
             org.apache.felix.bundleplugin*,
             org.apache.karaf.features.*,
@@ -91,6 +98,9 @@
             org.sonatype.aether.*,
             org.codehaus.plexus.*,
             org.ops4j.*,
+            org.fusesource.fabric.maven.impl,
+            org.sonatype.plexus.components.cipher,
+            org.sonatype.plexus.components.sec.dispatcher,
         </fuse.osgi.private.pkg>
         <fuse.osgi.activator>
             org.fusesource.fabric.agent.Activator
