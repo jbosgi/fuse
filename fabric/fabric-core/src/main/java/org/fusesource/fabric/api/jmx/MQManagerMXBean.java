@@ -24,7 +24,18 @@ import java.util.List;
  */
 public interface MQManagerMXBean {
 
-    List<MQTopologyDTO> loadTopology();
+    /**
+     * Returns the current logical Fabric broker configuration
+     */
+    List<MQBrokerConfigDTO> loadBrokerConfiguration();
 
-    void updateMQTopologyJson(String json) throws IOException;
+    /**
+     * Saves the broker configuration as JSON
+     */
+    void saveBrokerConfigurationJSON(String json) throws IOException;
+
+    /**
+     * Returns the current runtime status of all the logical Fabric brokers
+     */
+    List<MQBrokerStatusDTO> loadBrokerStatus() throws Exception;
 }

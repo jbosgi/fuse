@@ -18,14 +18,16 @@ package org.fusesource.fabric.internal;
 
 import org.fusesource.fabric.api.Container;
 import org.fusesource.fabric.api.FabricException;
+import org.fusesource.fabric.api.FabricRequirements;
 import org.fusesource.fabric.api.Profile;
 import org.fusesource.fabric.api.FabricService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
 
 public class ProfileImpl implements Profile {
-
     public static final String AGENT_PID = "org.fusesource.fabric.agent";
 
     private final String id;
@@ -197,9 +199,7 @@ public class ProfileImpl implements Profile {
         if (parents == null) {
             setAttribute(PARENTS, null);
             return;
-        } else if (isLocked()) {
-            throw new UnsupportedOperationException("The profile " + id + " is locked and can not be modified");
-        }
+        } else assertNotLocked();
 
         try {
             StringBuilder sb = new StringBuilder();
@@ -255,14 +255,17 @@ public class ProfileImpl implements Profile {
 
     @Override
     public void setFileConfigurations(Map<String, byte[]> configurations) {
-        if (isLocked()) {
-            throw new UnsupportedOperationException("The profile " + id + " is locked and can not be modified");
-        }
+        assertNotLocked();
         getService().getDataStore().setFileConfigurations(version, id, configurations);
     }
 
     public Map<String, Map<String, String>> getConfigurations() {
         return getService().getDataStore().getConfigurations(version, id);
+    }
+
+    @Override
+    public Map<String, String> getConfiguration(String pid) {
+        return getService().getDataStore().getConfiguration(version, id, pid);
     }
 
     @Override
@@ -275,10 +278,14 @@ public class ProfileImpl implements Profile {
     }
 
     public void setConfigurations(Map<String, Map<String, String>> configurations) {
-        if (isLocked()) {
-            throw new UnsupportedOperationException("The profile " + id + " is locked and can not be modified");
-        }
+        assertNotLocked();
         getService().getDataStore().setConfigurations(version, id, configurations);
+    }
+
+    @Override
+    public void setConfiguration(String pid, Map<String, String> configuration) {
+        assertNotLocked();
+        getService().getDataStore().setConfiguration(version, id, pid, configuration);
     }
 
     public void delete() {
@@ -303,6 +310,16 @@ public class ProfileImpl implements Profile {
             }
             sb.append(". Use force option to also remove the profile from the containers.");
             throw new FabricException(sb.toString());
+        }
+
+        // lets remove any pending requirements on this profile
+        FabricRequirements requirements = service.getRequirements();
+        if (requirements.removeProfileRequirements(id)) {
+            try {
+                service.setRequirements(requirements);
+            } catch (IOException e) {
+                throw new FabricException("Failed to update requirements after deleting profile " + id + ". " + e, e);
+            }
         }
     }
 
@@ -384,4 +401,9 @@ public class ProfileImpl implements Profile {
         return getService().getDataStore().getLastModified(version, id);
     }
 
+    protected void assertNotLocked() {
+        if (isLocked()) {
+            throw new UnsupportedOperationException("The profile " + id + " is locked and can not be modified");
+        }
+    }
 }

@@ -115,7 +115,7 @@ public class ZkBridgeDestinationsConfigFactory
 
             } else {
                 // look for Properties config
-                Map<String,String> properties = profile.getConfigurations().get(bridgeDestinationsProperties);
+                Map<String,String> properties = profile.getConfiguration(bridgeDestinationsProperties);
                 if (properties != null) {
                     try {
 
@@ -200,8 +200,7 @@ public class ZkBridgeDestinationsConfigFactory
 
         for (Profile profile : profiles) {
 
-            Map<String, String> properties = profile.getConfigurations().get(
-                dispatchPolicyConfig);
+            Map<String, String> properties = profile.getConfiguration(dispatchPolicyConfig);
 
             if (properties != null) {
                 DispatchPolicy dispatchPolicy = new DispatchPolicy();

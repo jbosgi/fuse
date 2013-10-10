@@ -22,6 +22,7 @@ import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
+import org.apache.karaf.jaas.config.JaasRealm;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.http.server.GitServlet;
 import org.fusesource.fabric.api.FabricException;
@@ -76,8 +77,13 @@ public final class GitHttpServerRegistrationHandler extends AbstractComponent im
     @Reference(referenceInterface = GitService.class)
     private final ValidatingReference<GitService> gitService = new ValidatingReference<GitService>();
 
-    @Reference(referenceInterface = FabricService.class)
+    //Reference not used, but it expresses the dependency on a fully initialized fabric.
+    @Reference
     private FabricService fabricService;
+
+    //Reference not used, but it expresses the dependency of the git server on a jaas realm that supports container tokens.
+    @Reference(target = "(supports.container.tokens=true)")
+    private JaasRealm fabricJaasRelm;
     
 
     @GuardedBy("volatile") private volatile Group<GitNode> group;
@@ -119,23 +125,31 @@ public final class GitHttpServerRegistrationHandler extends AbstractComponent im
     @Override
     public void groupEvent(Group<GitNode> group, GroupEvent event) {
         if (isValid()) {
-            if (group.isMaster()) {
-                LOGGER.info("Git repo is the master");
-            } else {
-                LOGGER.info("Git repo is not the master");
+            switch (event) {
+                case CONNECTED:
+                case CHANGED:
+                    updateMasterUrl(group);
+                    break;
             }
-            try {
-                GitNode state = createState();
-                group.update(state);
-                String url = state.getUrl();
-                gitRemoteUrl = getSubstitutedData(curator.get(), url);
-                if (group.isMaster()) {
-                    updateConfigAdmin();
-                }
+        }
+    }
 
-            } catch (Exception e) {
-                // Ignore
+    private void updateMasterUrl(Group group) {
+        if (group.isMaster()) {
+            LOGGER.debug("Git repo is the master");
+        } else {
+            LOGGER.debug("Git repo is not the master");
+        }
+        try {
+            GitNode state = createState();
+            group.update(state);
+            String url = state.getUrl();
+            gitRemoteUrl = getSubstitutedData(curator.get(), url);
+            if (group.isMaster()) {
+                updateConfigAdmin();
             }
+        } catch (Exception e) {
+            // Ignore
         }
     }
 

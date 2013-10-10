@@ -27,6 +27,7 @@ import java.util.List;
  */
 public class FabricRequirements {
     private List<ProfileRequirements> profileRequirements = new ArrayList<ProfileRequirements>();
+    private String version;
 
     public FabricRequirements() {
     }
@@ -37,6 +38,12 @@ public class FabricRequirements {
         sortProfilesRequirements();
     }
 
+
+    @Override
+    public String toString() {
+        return "FabricRequirements" + profileRequirements;
+    }
+
     public List<ProfileRequirements> getProfileRequirements() {
         return profileRequirements;
     }
@@ -44,6 +51,18 @@ public class FabricRequirements {
     public void setProfileRequirements(List<ProfileRequirements> profileRequirements) {
         this.profileRequirements = profileRequirements;
         sortProfilesRequirements();
+    }
+
+    /**
+     * Returns the current version for the fabric which the requirements apply to (usually the latest version,
+     * as scaling requirements typically are independent of rolling upgrades and versioning).
+     */
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 
     /**
@@ -67,11 +86,13 @@ public class FabricRequirements {
         return null;
     }
 
-    public void removeProfileRequirements(String profile) {
+    public boolean removeProfileRequirements(String profile) {
         ProfileRequirements requirements = findProfileRequirements(profile);
         if (requirements != null) {
             profileRequirements.remove(requirements);
+            return true;
         }
+        return false;
     }
 
     public void addOrUpdateProfileRequirements(ProfileRequirements requirement) {
@@ -96,8 +117,15 @@ public class FabricRequirements {
         }
     }
 
-    @Override
-    public String toString() {
-        return "FabricRequirements" + profileRequirements;
+    /**
+     * Returns true if there are any requirements for the given profile ID and it has at least 1 minimum instances defined
+     */
+    public boolean hasMinimumInstances(String profileId) {
+        ProfileRequirements profileRequirement = findProfileRequirements(profileId);
+        if (profileRequirement != null) {
+            return profileRequirement.hasMinimumInstances();
+        }
+        return false;
     }
+
 }
