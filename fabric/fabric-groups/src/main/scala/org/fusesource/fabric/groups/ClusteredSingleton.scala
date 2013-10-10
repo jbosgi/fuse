@@ -188,6 +188,20 @@ class ClusteredSingleton[T <: NodeState ](stateClass:Class[T]) extends Clustered
     }
   }
 
+  override def fireConnected = this.synchronized {
+    if (_state!=null && _eid==null)
+      _eid = group.join(encode(_state, mapper))
+    super.fireConnected
+  }
+
+  override def fireDisconnected = this.synchronized {
+    if (_eid!=null) {
+      group.leave(_eid)
+      _eid = null
+    }
+    super.fireDisconnected
+  }
+
   def join(state:T):Unit = this.synchronized {
     if(state==null)
       throw new IllegalArgumentException("State cannot be null")
@@ -195,10 +209,9 @@ class ClusteredSingleton[T <: NodeState ](stateClass:Class[T]) extends Clustered
       throw new IllegalArgumentException("The state id cannot be null")
     if(_group==null)
       throw new IllegalStateException("Not started.")
-    if(this._state!=null)
-      throw new IllegalStateException("Already joined")
     this._state = state
-    _eid = group.join(encode(state, mapper))
+    if (group.connected)
+      _eid = group.join(encode(state, mapper))
   }
 
   def leave:Unit = this.synchronized {
@@ -224,7 +237,8 @@ class ClusteredSingleton[T <: NodeState ](stateClass:Class[T]) extends Clustered
     if(_group==null)
       throw new IllegalStateException("Not started.")
     this._state = state
-    _group.update(_eid, encode(state, mapper))
+    if (_eid!=null)
+      _group.update(_eid, encode(state, mapper))
   }
 
   def isMaster:Boolean = this.synchronized {

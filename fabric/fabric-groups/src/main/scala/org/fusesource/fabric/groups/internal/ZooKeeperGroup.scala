@@ -92,8 +92,14 @@ class ZooKeeperGroup(val zk: IZKClient, val root: String) extends Group with Lif
   }
 
   def connected = zk.isConnected
-  def onConnected() = fireConnected()
-  def onDisconnected() = fireDisconnected()
+  def onConnected() = {
+    create(root)
+    tree.track()
+    fireConnected()
+  }
+  def onDisconnected() = {
+    fireDisconnected()
+  }
 
   def join(data:Array[Byte]=null): String = this.synchronized {
     val id = zk.create(member_path_prefix, data, CreateMode.EPHEMERAL_SEQUENTIAL).stripPrefix(member_path_prefix)
