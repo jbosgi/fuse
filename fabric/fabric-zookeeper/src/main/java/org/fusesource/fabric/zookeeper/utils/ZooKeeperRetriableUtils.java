@@ -37,7 +37,9 @@ public final class ZooKeeperRetriableUtils {
     public static void copy(IZKClient source, IZKClient dest, String path) throws InterruptedException, KeeperException {
         for (String child : ZookeeperCommandBuilder.getChildren(path).execute(source)) {
             child = path + "/" + child;
-            if (exists(dest, child) == null) {
+            Stat stat1 = exists(source, child);
+            Stat stat2 = exists(dest, child);
+            if (stat1 != null && stat1.getEphemeralOwner() == 0 && stat2 == null) {
                 byte[] data  = ZookeeperCommandBuilder.getData(child).execute(source);
                 ZookeeperCommandBuilder.set(child, data).execute(dest);
                 copy(source, dest, child);
