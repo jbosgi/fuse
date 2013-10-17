@@ -193,6 +193,7 @@ public abstract class AbstractZKClient extends org.linkedin.zookeeper.client.Abs
         synchronized (_lock) {
             changeState(State.CONNECTING);
             _zk = _factory.createZooKeeper(this);
+
             if (password != null) {
                 _zk.addAuthInfo("digest", ("fabric:" + password).getBytes("UTF-8"));
             }
@@ -217,6 +218,11 @@ public abstract class AbstractZKClient extends org.linkedin.zookeeper.client.Abs
 
                     case Expired:
                         // when expired, the zookeeper object is invalid and we need to recreate a new one
+                        try {
+                            _zk.close();
+                        } catch (InterruptedException e) {
+                            Thread.interrupted();
+                        }
                         _zk = null;
                         LOG.warn("Expiration detected: trying to restart...");
                         tryConnect();
