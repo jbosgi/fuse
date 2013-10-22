@@ -108,7 +108,7 @@ public class ProfileEditTest extends FabricTestSupport {
 
 
     @Test
-    @Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
+    //@Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
     public void testImportPid() throws Exception {
         System.err.println(executeCommands("config:edit my.pid","config:propset key1 value1","config:propset key2 value2", "config:update"));
         System.err.println(executeCommand("fabric:create -n"));

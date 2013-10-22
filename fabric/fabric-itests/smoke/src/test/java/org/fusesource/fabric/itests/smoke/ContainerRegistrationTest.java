@@ -24,7 +24,7 @@ import java.util.Set;
  */
 @RunWith(JUnit4TestRunner.class)
 @ExamReactorStrategy(AllConfinedStagedReactorFactory.class)
-@Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
+//@Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
 public class ContainerRegistrationTest extends FabricTestSupport {
 
     @After

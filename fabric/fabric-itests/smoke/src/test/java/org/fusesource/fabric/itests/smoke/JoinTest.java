@@ -41,7 +41,7 @@ import static org.apache.karaf.tooling.exam.options.KarafDistributionOption.edit
 
 @RunWith(JUnit4TestRunner.class)
 @ExamReactorStrategy(AllConfinedStagedReactorFactory.class)
-@Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
+//@Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
 public class JoinTest extends FabricTestSupport {
 
     private static final String WAIT_FOR_JOIN_SERVICE = "wait-for-service org.fusesource.fabric.boot.commands.service.Join";

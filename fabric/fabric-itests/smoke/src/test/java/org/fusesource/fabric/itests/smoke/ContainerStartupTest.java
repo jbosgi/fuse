@@ -62,7 +62,7 @@ public class ContainerStartupTest extends FabricTestSupport {
     }
 
     @Test
-    @Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
+    //@Ignore("[FABRIC-521] Fix fabric/fabric-itests/fabric-itests-smoke")
     public void testLocalFabricClusterWithPassword() throws Exception {
         System.out.println(executeCommand("fabric:create -n --clean --zookeeper-password testpassword root"));
 
